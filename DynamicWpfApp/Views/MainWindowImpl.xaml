@@ -6,5 +6,6 @@
     <StackPanel>
         <Button Content="TEST" />
         <TextBlock x:Name="textBlock" />
+        <TextBlock Text="{Binding TextContent}" />
     </StackPanel>
 </Grid>
