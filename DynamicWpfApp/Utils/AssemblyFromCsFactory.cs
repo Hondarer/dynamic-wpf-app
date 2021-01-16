@@ -108,11 +108,16 @@ namespace DynamicWpfApp.Utils
             MetadataReference[] references = MetadataReferences.ToArray();
 
             // analyse and generate IL code from syntax tree
+            CSharpCompilationOptions cSharpCompilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+#if !DEBUG
+            cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
+#endif
+
             CSharpCompilation compilation = CSharpCompilation.Create(
                 $"{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}",
                 syntaxTrees: new[] { syntaxTree },
                 references: references,
-                options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+                options: cSharpCompilationOptions);
 
             using (var ms = new MemoryStream())
             {
