@@ -127,9 +127,10 @@ namespace DynamicWpfApp.Utils
 
                     StringBuilder sb = new StringBuilder();
 
+                    sb.AppendLine("Compilation error(s) has occurred.");
                     foreach (Diagnostic diagnostic in failures)
                     {
-                        sb.AppendLine($"{diagnostic.Id}: {diagnostic.GetMessage()}");
+                        sb.AppendLine(diagnostic.ToString());
                     }
 
                     throw new Exception(sb.ToString());
@@ -151,6 +152,22 @@ namespace DynamicWpfApp.Utils
             }
 
             return assemblyCacheEntry.assembly;
+        }
+
+        public object GetNewInstance(string assemblyPath, string classFullName, params object[] args)
+        {
+            // 例外が出る可能性がある
+            Assembly assembly = GetAssembly(assemblyPath);
+            // 見つからないとtypeがnullになる
+            Type type = assembly.GetType(classFullName);
+            if (type == null)
+            {
+                throw new Exception($"Class not found: {classFullName}");
+            }
+            // 例外が出る可能性がある
+            object obj = Activator.CreateInstance(type, args);
+
+            return obj;
         }
     }
 }
