@@ -1,7 +1,9 @@
 ﻿using DynamicWpfApp.Utils;
 using DynamicWpfApp.ViewModels;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Markup;
@@ -16,19 +18,14 @@ namespace DynamicWpfApp.Views
         /// </summary>
         protected object expansionGridCodeBehind = null;
 
-        /// <summary>
-        /// 追加のグリッドを保持します。
-        /// </summary>
-        protected Grid ExpansionGrid { get; set; }
-
         public ExpandableWindow()
         {
-            Initialized += DynamicWindow_Initialized;
+            Loaded += ExpandableWindow_Loaded;
         }
 
-        private void DynamicWindow_Initialized(object sender, EventArgs e)
+        private void ExpandableWindow_Loaded(object sender, RoutedEventArgs e)
         {
-            Initialized -= DynamicWindow_Initialized;
+            Loaded -= ExpandableWindow_Loaded;
 
             try
             {
@@ -38,11 +35,24 @@ namespace DynamicWpfApp.Views
                     using (StreamReader srImplXaml = new StreamReader(@"Views\MainWindowEx.xaml"))
                     {
                         grid = XamlReader.Load(srImplXaml.BaseStream) as Grid;
+                        grid.Name = "expansionGrid";
 
                         if (Content is Grid)
                         {
                             (Content as Grid).Children.Add(grid);
-                            ExpansionGrid = grid;
+                            RegisterName(grid.Name, grid);
+
+                            // XamlReader で読み込むと、読み込んだ xaml のルート要素に NameScope が構築される。
+                            // この NameScope を親に詰め替える。
+
+                            INameScopeDictionary gridNameScope = NameScope.GetNameScope(grid) as INameScopeDictionary;
+
+                            foreach (KeyValuePair<string, object> nameScopeEntry in gridNameScope.AsEnumerable())
+                            {
+                                RegisterName(nameScopeEntry.Key, nameScopeEntry.Value);
+                            }
+
+                            gridNameScope.Clear();
                         }
                         else
                         {
@@ -53,7 +63,7 @@ namespace DynamicWpfApp.Views
 
                 if (File.Exists(@"Views\MainWindowEx.xaml.cs") == true)
                 {
-                    (sender as ExpandableWindow).expansionGridCodeBehind = LoadCodeBehind(grid);
+                    (sender as ExpandableWindow).expansionGridCodeBehind = LoadCodeBehind();
                 }
 
                 if (File.Exists(@"ViewModels\MainWindowViewModelEx.cs") == true)
@@ -82,13 +92,13 @@ namespace DynamicWpfApp.Views
             }
         }
 
-        public object LoadCodeBehind(Grid grid)
+        public object LoadCodeBehind()
         {
             // 例外が出る可能性がある
             return AssemblyFromCsFactory.Instance.GetNewInstance(
                 @"Views\MainWindowEx.xaml.cs",
                 "DynamicWpfApp.Views.MainWindowEx",
-                grid);
+                this);
         }
 
         public void LoadViewModel()

@@ -5,9 +5,9 @@ namespace DynamicWpfApp.Views
 {
     public class MainWindowEx
     {
-        public MainWindowEx(Grid grid)
+        public MainWindowEx(Window window)
         {
-            TextBlock textBlock = grid.FindName("textBlock") as TextBlock;
+            TextBlock textBlock = window.FindName("textBlock") as TextBlock;
             textBlock.Text = "ABCDE";
         }
     }
