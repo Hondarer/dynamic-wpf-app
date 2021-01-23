@@ -16,7 +16,7 @@ namespace DynamicWpfApp.Views
         /// <summary>
         /// 追加のグリッドのコードビハインドを保持します。
         /// </summary>
-        protected object expansionGridCodeBehind = null;
+        protected object expansionContentCodeBehind = null;
 
         public ExpandableWindow()
         {
@@ -29,23 +29,23 @@ namespace DynamicWpfApp.Views
 
             try
             {
-                Grid grid = null;
+                FrameworkElement expansionContent = null;
                 if (File.Exists(@"Views\MainWindowEx.xaml") == true)
                 {
                     using (StreamReader srImplXaml = new StreamReader(@"Views\MainWindowEx.xaml"))
                     {
-                        grid = XamlReader.Load(srImplXaml.BaseStream) as Grid;
-                        grid.Name = "expansionGrid";
+                        expansionContent = XamlReader.Load(srImplXaml.BaseStream) as FrameworkElement;
+                        expansionContent.Name = "expansionContent";
 
-                        if (Content is Grid)
+                        if (Content is Panel)
                         {
-                            (Content as Grid).Children.Add(grid);
-                            RegisterName(grid.Name, grid);
+                            (Content as Panel).Children.Add(expansionContent);
+                            RegisterName(expansionContent.Name, expansionContent);
 
                             // XamlReader で読み込むと、読み込んだ xaml のルート要素に NameScope が構築される。
                             // この NameScope を親に詰め替える。
 
-                            INameScopeDictionary gridNameScope = NameScope.GetNameScope(grid) as INameScopeDictionary;
+                            INameScopeDictionary gridNameScope = NameScope.GetNameScope(expansionContent) as INameScopeDictionary;
 
                             foreach (KeyValuePair<string, object> nameScopeEntry in gridNameScope.AsEnumerable())
                             {
@@ -63,7 +63,7 @@ namespace DynamicWpfApp.Views
 
                 if (File.Exists(@"Views\MainWindowEx.xaml.cs") == true)
                 {
-                    (sender as ExpandableWindow).expansionGridCodeBehind = LoadCodeBehind();
+                    (sender as ExpandableWindow).expansionContentCodeBehind = LoadCodeBehind();
                 }
 
                 if (File.Exists(@"ViewModels\MainWindowViewModelEx.cs") == true)
@@ -77,9 +77,9 @@ namespace DynamicWpfApp.Views
             }
             catch (Exception ex)
             {
-                if (Content is Grid)
+                if (Content is Panel)
                 {
-                    (Content as Grid).Children.Add(new TextBox()
+                    (Content as Panel).Children.Add(new TextBox()
                     {
                         Text = ex.ToString(),
                         IsReadOnly = true,
