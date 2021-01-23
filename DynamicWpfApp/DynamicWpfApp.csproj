@@ -90,8 +90,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Content Include="Views\MainWindowImpl.xaml.cs">
-      <DependentUpon>MainWindowImpl.xaml</DependentUpon>
+    <Content Include="Views\MainWindowEx.xaml.cs">
+      <DependentUpon>MainWindowEx.xaml</DependentUpon>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Page Include="Views\MainWindow.xaml">
@@ -104,15 +104,15 @@
     </Compile>
     <Compile Include="Utils\AssemblyFromCsFactory.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
-    <Content Include="ViewModels\MainWindowViewModelImpl.cs">
+    <Content Include="ViewModels\MainWindowViewModelEx.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Views\DynamicWindow.cs" />
+    <Compile Include="Views\ExpandableWindow.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Content Include="Views\MainWindowImpl.xaml">
+    <Content Include="Views\MainWindowEx.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

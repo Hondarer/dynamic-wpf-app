@@ -87,6 +87,8 @@ namespace DynamicWpfApp.Utils
             }
 
             List<MetadataReference> MetadataReferences = new List<MetadataReference>();
+
+            // 自身のアセンブリに読み込まれているアセンブリは追加コードでも対象にする
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
                 // 自動生成のアセンブリは対象外とする

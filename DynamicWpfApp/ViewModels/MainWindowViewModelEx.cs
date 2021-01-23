@@ -1,6 +1,6 @@
 ﻿namespace DynamicWpfApp.ViewModels
 {
-    public class MainWindowViewModelImpl : MainWindowViewModel
+    public class MainWindowViewModelEx : MainWindowViewModel
     {
         public string TextContent { get; set; } = "TEXTCONTENT";
     }

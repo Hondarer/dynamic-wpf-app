@@ -9,14 +9,19 @@ using System.Windows.Media;
 
 namespace DynamicWpfApp.Views
 {
-    public class DynamicWindow : Window
+    public class ExpandableWindow : Window
     {
         /// <summary>
-        /// 追加のコードビハインドを保持します。
+        /// 追加のグリッドのコードビハインドを保持します。
         /// </summary>
-        protected object codeBehindImpl = null;
+        protected object expansionGridCodeBehind = null;
 
-        public DynamicWindow()
+        /// <summary>
+        /// 追加のグリッドを保持します。
+        /// </summary>
+        protected Grid ExpansionGrid { get; set; }
+
+        public ExpandableWindow()
         {
             Initialized += DynamicWindow_Initialized;
         }
@@ -27,16 +32,17 @@ namespace DynamicWpfApp.Views
 
             try
             {
-                FrameworkElement content = null;
-                if (File.Exists(@"Views\MainWindowImpl.xaml") == true)
+                Grid grid = null;
+                if (File.Exists(@"Views\MainWindowEx.xaml") == true)
                 {
-                    using (StreamReader srImplXaml = new StreamReader(@"Views\MainWindowImpl.xaml"))
+                    using (StreamReader srImplXaml = new StreamReader(@"Views\MainWindowEx.xaml"))
                     {
-                        content = XamlReader.Load(srImplXaml.BaseStream) as FrameworkElement;
+                        grid = XamlReader.Load(srImplXaml.BaseStream) as Grid;
 
                         if (Content is Grid)
                         {
-                            (Content as Grid).Children.Add(content);
+                            (Content as Grid).Children.Add(grid);
+                            ExpansionGrid = grid;
                         }
                         else
                         {
@@ -45,12 +51,12 @@ namespace DynamicWpfApp.Views
                     }
                 }
 
-                if (File.Exists(@"Views\MainWindowImpl.xaml.cs") == true)
+                if (File.Exists(@"Views\MainWindowEx.xaml.cs") == true)
                 {
-                    (sender as DynamicWindow).codeBehindImpl = LoadCodeBehind(content);
+                    (sender as ExpandableWindow).expansionGridCodeBehind = LoadCodeBehind(grid);
                 }
 
-                if (File.Exists(@"ViewModels\MainWindowViewModelImpl.cs") == true)
+                if (File.Exists(@"ViewModels\MainWindowViewModelEx.cs") == true)
                 {
                     LoadViewModel();
                 }
@@ -76,21 +82,21 @@ namespace DynamicWpfApp.Views
             }
         }
 
-        public object LoadCodeBehind(FrameworkElement content)
+        public object LoadCodeBehind(Grid grid)
         {
             // 例外が出る可能性がある
             return AssemblyFromCsFactory.Instance.GetNewInstance(
-                @"Views\MainWindowImpl.xaml.cs",
-                "DynamicWpfApp.Views.MainWindowImpl",
-                this, content);
+                @"Views\MainWindowEx.xaml.cs",
+                "DynamicWpfApp.Views.MainWindowEx",
+                grid);
         }
 
         public void LoadViewModel()
         {
             // 例外が出る可能性がある
             DataContext = AssemblyFromCsFactory.Instance.GetNewInstance(
-                @"ViewModels\MainWindowViewModelImpl.cs",
-                "DynamicWpfApp.ViewModels.MainWindowViewModelImpl");
+                @"ViewModels\MainWindowViewModelEx.cs",
+                "DynamicWpfApp.ViewModels.MainWindowViewModelEx");
         }
     }
 }
