@@ -18,6 +18,7 @@ namespace DynamicWpfApp.Utils
             public Assembly assembly;
             public int generation = 0;
             public DateTime lastUpdated;
+            public MetadataReference metadataReference;
         }
 
         private Dictionary<string, AssemblyCacheEntry> assemblyCache = new Dictionary<string, AssemblyCacheEntry>();
@@ -91,7 +92,7 @@ namespace DynamicWpfApp.Utils
             // 自身のアセンブリに読み込まれているアセンブリは追加コードでも対象にする
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                // 自動生成のアセンブリは対象外とする
+                // 動的生成のアセンブリはパスがないので、ファイルからの追加は対象外とする
                 if (string.IsNullOrEmpty(assembly.Location) != true)
                 {
                     MetadataReferences.Add(MetadataReference.CreateFromFile(assembly.Location));
@@ -107,6 +108,19 @@ namespace DynamicWpfApp.Utils
                 //     = @"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\{0}.dll";
                 // MetadataReference.CreateFromFile(string.Format(runtimePath, "WindowsBase")
             }
+
+            // 自動生成のアセンブリの追加
+            // MEMO: 依存するクラスは先に登録しておく必要がある。対象ファイルをまとめてコンパイルする方法も考えられる。
+            foreach (AssemblyCacheEntry _assemblyCacheEntry in assemblyCache.Values)
+            {
+                if (_assemblyCacheEntry.Equals(assemblyCacheEntry))
+                {
+                    continue;
+                }
+
+                MetadataReferences.Add(_assemblyCacheEntry.metadataReference);
+            }
+
             MetadataReference[] references = MetadataReferences.ToArray();
 
             // analyse and generate IL code from syntax tree
@@ -155,6 +169,11 @@ namespace DynamicWpfApp.Utils
                     {
                         assemblyCache.Add(absolutePath, assemblyCacheEntry);
                     }
+
+                    ms.Seek(0, SeekOrigin.Begin);
+
+                    // MetadataReference の生成はイメージからしか行えないので、このタイミングで保持しておく。
+                    assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(ms);
                 }
             }
 
