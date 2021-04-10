@@ -1,5 +1,4 @@
 ﻿using DynamicWpfApp.Views;
-using System.Windows.Controls;
 
 namespace DynamicWpfApp
 {

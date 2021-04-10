@@ -1,8 +1,10 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
+using Microsoft.CodeAnalysis.Text;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -69,6 +71,7 @@ namespace DynamicWpfApp.Utils
 
                 if (assemblyCacheEntry.lastUpdated >= File.GetLastWriteTimeUtc(absolutePath))
                 {
+                    Debug.Print("Exists {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
                     return assemblyCacheEntry.assembly;
                 }
 
@@ -81,10 +84,14 @@ namespace DynamicWpfApp.Utils
 
             assemblyCacheEntry.lastUpdated = File.GetLastWriteTimeUtc(absolutePath);
 
+            Debug.Print("Load {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
+
+            SourceText sourceText;
             SyntaxTree syntaxTree;
-            using (StreamReader srXamlCs = new StreamReader(absolutePath))
+            using (FileStream srXamlCs = new FileStream(absolutePath, FileMode.Open))
             {
-                syntaxTree = CSharpSyntaxTree.ParseText(srXamlCs.ReadToEnd());
+                sourceText = SourceText.From(srXamlCs, canBeEmbedded: true);
+                syntaxTree = CSharpSyntaxTree.ParseText(sourceText);
             }
 
             List<MetadataReference> MetadataReferences = new List<MetadataReference>();
@@ -129,15 +136,31 @@ namespace DynamicWpfApp.Utils
             cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
 #endif
 
+            string assemblyName = $"{Path.GetFileNameWithoutExtension(absolutePath)}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
+
             CSharpCompilation compilation = CSharpCompilation.Create(
-                $"{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}",
+                $"{assemblyName}.dll",
                 syntaxTrees: new[] { syntaxTree },
                 references: references,
                 options: cSharpCompilationOptions);
 
-            using (var ms = new MemoryStream())
+            using (MemoryStream assemblyStream = new MemoryStream())
+            using (MemoryStream symbolsStream = new MemoryStream())
             {
-                EmitResult result = compilation.Emit(ms);
+                EmitOptions emitOptions = new EmitOptions(
+                        debugInformationFormat: DebugInformationFormat.PortablePdb,
+                        pdbFilePath: $"{assemblyName}.pdb");
+
+                List<EmbeddedText> embeddedTexts = new List<EmbeddedText>()
+                    {
+                        EmbeddedText.FromSource(absolutePath, sourceText),
+                    };
+
+                EmitResult result = compilation.Emit(
+                    peStream: assemblyStream,
+                    pdbStream: symbolsStream,
+                    embeddedTexts: embeddedTexts,
+                    options: emitOptions);
 
                 if (result.Success == false)
                 {
@@ -148,7 +171,7 @@ namespace DynamicWpfApp.Utils
 
                     StringBuilder sb = new StringBuilder();
 
-                    sb.AppendLine("Compilation error(s) has occurred.");
+                    sb.AppendLine($"Compilation error(s) has occurred in {absolutePath}.");
                     foreach (Diagnostic diagnostic in failures)
                     {
                         sb.AppendLine(diagnostic.ToString());
@@ -158,22 +181,23 @@ namespace DynamicWpfApp.Utils
                 }
                 else
                 {
-                    ms.Seek(0, SeekOrigin.Begin);
+                    assemblyStream.Seek(0, SeekOrigin.Begin);
+                    symbolsStream.Seek(0, SeekOrigin.Begin);
 
                     // この時点で assemblyCacheEntry.assembly が非 null の場合は、可能ならば解放したいが、
                     // .NET FW では難しいので放置して入れ替えることにする。連続稼働は考慮しない。
 
-                    assemblyCacheEntry.assembly = Assembly.Load(ms.ToArray());
+                    assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray());
 
                     if (assemblyCache.ContainsValue(assemblyCacheEntry) == false)
                     {
                         assemblyCache.Add(absolutePath, assemblyCacheEntry);
                     }
 
-                    ms.Seek(0, SeekOrigin.Begin);
+                    assemblyStream.Seek(0, SeekOrigin.Begin);
 
                     // MetadataReference の生成はイメージからしか行えないので、このタイミングで保持しておく。
-                    assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(ms);
+                    assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(assemblyStream);
                 }
             }
 
