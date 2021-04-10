@@ -1,6 +1,5 @@
 ﻿using AdornableWpfApp.Commands;
 using AdornableWpfApp.Utils;
-using AdornableWpfApp.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -62,14 +61,17 @@ namespace AdornableWpfApp.Views
                     adornErrorContent = null;
                 }
 
+                if (DataContext != null)
+                {
+                    if (DataContext is IDisposable)
+                    {
+                        (DataContext as IDisposable).Dispose();
+                    }
+                    DataContext = null;
+                }
+
                 if (adornContentViewModel != null)
                 {
-                    DataContext = null;
-
-                    if (adornContentViewModel is IDisposable)
-                    {
-                        (adornContentViewModel as IDisposable).Dispose();
-                    }
                     adornContentViewModel = null;
                 }
 
@@ -136,7 +138,11 @@ namespace AdornableWpfApp.Views
                 }
                 else
                 {
-                    DataContext = new MainWindowViewModel();
+                    Type type = GetType().Assembly.GetType(@"AdornableWpfApp.ViewModels.MainWindowViewModel");
+                    if (type != null)
+                    {
+                        DataContext = Activator.CreateInstance(type);
+                    }
                 }
             }
             catch (Exception ex)
