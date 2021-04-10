@@ -48,7 +48,7 @@ namespace DynamicWpfApp.Views
 
         public void RefreshAdditional(object parameter=null)
         {
-            if (!(Content is Panel))
+            if ((Content is Panel) != true)
             {
                 return;
             }
@@ -100,7 +100,6 @@ namespace DynamicWpfApp.Views
                     // 例外が出る可能性がある
                     additionalContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(@"Views\MainWindowEx.xaml");
                     additionalContent.Name = "additionalContent";
-
                     (Content as Panel).Children.Add(additionalContent);
                     RegisterName(additionalContent.Name, additionalContent);
                     additionalNames.Add(additionalContent.Name);
@@ -119,12 +118,20 @@ namespace DynamicWpfApp.Views
 
                 if (File.Exists(@"Views\MainWindowEx.xaml.cs") == true)
                 {
-                    additionalContentCodeBehind = LoadCodeBehind();
+                    // 例外が出る可能性がある
+                    additionalContentCodeBehind = AssemblyFromCsFactory.Instance.GetNewInstance(
+                        @"Views\MainWindowEx.xaml.cs",
+                        "DynamicWpfApp.Views.MainWindowEx",
+                        this);
                 }
 
                 if (File.Exists(@"ViewModels\MainWindowViewModelEx.cs") == true)
                 {
-                    additionalContentViewModel = LoadViewModel();
+                    // 例外が出る可能性がある
+                    additionalContentViewModel = AssemblyFromCsFactory.Instance.GetNewInstance(
+                        @"ViewModels\MainWindowViewModelEx.cs",
+                        "DynamicWpfApp.ViewModels.MainWindowViewModelEx");
+
                     DataContext = additionalContentViewModel;
                 }
                 else
@@ -146,23 +153,6 @@ namespace DynamicWpfApp.Views
 
                 (Content as Panel).Children.Add(additionalErrorContent);
             }
-        }
-
-        public object LoadCodeBehind()
-        {
-            // 例外が出る可能性がある
-            return AssemblyFromCsFactory.Instance.GetNewInstance(
-                @"Views\MainWindowEx.xaml.cs",
-                "DynamicWpfApp.Views.MainWindowEx",
-                this);
-        }
-
-        public object LoadViewModel()
-        {
-            // 例外が出る可能性がある
-            return AssemblyFromCsFactory.Instance.GetNewInstance(
-                @"ViewModels\MainWindowViewModelEx.cs",
-                "DynamicWpfApp.ViewModels.MainWindowViewModelEx");
         }
     }
 }

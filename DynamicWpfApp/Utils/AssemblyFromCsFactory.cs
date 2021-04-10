@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security;
 using System.Text;
 
 namespace DynamicWpfApp.Utils
@@ -21,6 +22,25 @@ namespace DynamicWpfApp.Utils
             public int generation = 0;
             public DateTime lastUpdated;
             public MetadataReference metadataReference;
+
+            public override bool Equals(object obj)
+            {
+                if (obj == null)
+                {
+                    return false;
+                }
+                if ((obj is AssemblyCacheEntry) != true)
+                {
+                    return false;
+                }
+
+                return this.guid == (obj as AssemblyCacheEntry).guid;
+            }
+
+            public override int GetHashCode()
+            {
+                return base.GetHashCode();
+            }
         }
 
         private Dictionary<string, AssemblyCacheEntry> assemblyCache = new Dictionary<string, AssemblyCacheEntry>();
@@ -44,6 +64,8 @@ namespace DynamicWpfApp.Utils
                     }
                 }
 
+                AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+
                 return instance;
             }
         }
@@ -52,10 +74,26 @@ namespace DynamicWpfApp.Utils
         {
         }
 
+        private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
+        {
+            // 既定のアセンブリ解決処理で動的生成されたアセンブリを Load しようとすると、
+            // FileNotFoundException が発生してしまうため、カスタム解決処理を組み入れる。
+
+            // 動的生成されたアセンブリの要求であれば、このクラスからアセンブリを返す。
+            foreach (AssemblyCacheEntry assemblyCacheEntry in instance.assemblyCache.Values)
+            {
+                if (assemblyCacheEntry.assembly.FullName == args.Name)
+                {
+                    return assemblyCacheEntry.assembly;
+                }
+            }
+
+            // この判定の対象外。
+            return null;
+        }
+
         public Assembly GetAssembly(string path)
         {
-            // https://stackoverflow.com/questions/826398/is-it-possible-to-dynamically-compile-and-execute-c-sharp-code-fragments
-
             if (File.Exists(path) == false)
             {
                 throw new FileNotFoundException(path);
@@ -76,6 +114,10 @@ namespace DynamicWpfApp.Utils
                 }
 
                 assemblyCacheEntry.generation++;
+
+                // この時点で assemblyCacheEntry.assembly が非 null の場合は、可能ならば解放したいが、
+                // .NET FW では技術的に困難なため、解放はせずに入れ替える。
+                assemblyCacheEntry.assembly = null;
             }
             else
             {
@@ -117,9 +159,11 @@ namespace DynamicWpfApp.Utils
             }
 
             // 自動生成のアセンブリの追加
-            // MEMO: 依存するクラスは先に登録しておく必要がある。対象ファイルをまとめてコンパイルする方法も考えられる。
+            // MEMO: 依存するクラスは当然、先に生成・登録しておく必要がある。
+            //       対象ファイルをまとめてコンパイルする方法も考えられるが、現状は、ソース一本一本を別アセンブリとして管理している。
             foreach (AssemblyCacheEntry _assemblyCacheEntry in assemblyCache.Values)
             {
+                // 自身は対象外
                 if (_assemblyCacheEntry.Equals(assemblyCacheEntry))
                 {
                     continue;
@@ -148,8 +192,8 @@ namespace DynamicWpfApp.Utils
             using (MemoryStream symbolsStream = new MemoryStream())
             {
                 EmitOptions emitOptions = new EmitOptions(
-                        debugInformationFormat: DebugInformationFormat.PortablePdb,
-                        pdbFilePath: $"{assemblyName}.pdb");
+                    debugInformationFormat: DebugInformationFormat.PortablePdb,
+                    pdbFilePath: $"{assemblyName}.pdb");
 
                 List<EmbeddedText> embeddedTexts = new List<EmbeddedText>()
                     {
@@ -184,10 +228,7 @@ namespace DynamicWpfApp.Utils
                     assemblyStream.Seek(0, SeekOrigin.Begin);
                     symbolsStream.Seek(0, SeekOrigin.Begin);
 
-                    // この時点で assemblyCacheEntry.assembly が非 null の場合は、可能ならば解放したいが、
-                    // .NET FW では難しいので放置して入れ替えることにする。連続稼働は考慮しない。
-
-                    assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray());
+                    assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray(), SecurityContextSource.CurrentAppDomain);
 
                     if (assemblyCache.ContainsValue(assemblyCacheEntry) == false)
                     {
@@ -196,7 +237,8 @@ namespace DynamicWpfApp.Utils
 
                     assemblyStream.Seek(0, SeekOrigin.Begin);
 
-                    // MetadataReference の生成はイメージからしか行えないので、このタイミングで保持しておく。
+                    // MetadataReference の生成はイメージからしか行うべきなので、このタイミングで保持しておく。
+                    // (Assembly から生成する方法は Obsolete になっている。)
                     assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(assemblyStream);
                 }
             }
@@ -208,12 +250,14 @@ namespace DynamicWpfApp.Utils
         {
             // 例外が出る可能性がある
             Assembly assembly = GetAssembly(assemblyPath);
-            // 見つからないとtypeがnullになる
+
+            // 見つからないと type が null になる
             Type type = assembly.GetType(classFullName);
             if (type == null)
             {
                 throw new Exception($"Class not found: {classFullName}");
             }
+
             // 例外が出る可能性がある
             object obj = Activator.CreateInstance(type, args);
 

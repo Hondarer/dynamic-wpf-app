@@ -68,6 +68,7 @@ namespace DynamicWpfApp.Utils
                 }
 
                 frameworkElementCacheEntry.generation++;
+                frameworkElementCacheEntry.frameworkElement = null;
             }
             else
             {
