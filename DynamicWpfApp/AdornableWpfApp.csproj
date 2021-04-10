@@ -91,8 +91,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Content Include="Views\MainWindowAdorner.xaml.cs">
-      <DependentUpon>MainWindowAdorner.xaml</DependentUpon>
+    <Content Include="Views\AdornableWpfApp.Views.MainWindowAdorner.xaml.cs">
+      <DependentUpon>AdornableWpfApp.Views.MainWindowAdorner.xaml</DependentUpon>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Page Include="Views\MainWindow.xaml">
@@ -108,13 +108,15 @@
     <Compile Include="Utils\FrameworkElementFromXamlFactory.cs" />
     <Compile Include="ViewModels\BindableBase.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
-    <Content Include="ViewModels\MainWindowViewModelAdorner.cs" />
+    <Content Include="ViewModels\AdornableWpfApp.ViewModels.MainWindowViewModelAdorner.cs">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Compile Include="Views\AdornableWindow.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Content Include="Views\MainWindowAdorner.xaml">
+    <Content Include="Views\AdornableWpfApp.Views.MainWindowAdorner.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

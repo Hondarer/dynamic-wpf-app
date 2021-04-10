@@ -1,6 +1,4 @@
-﻿using AdornableWpfApp.Views;
-
-namespace AdornableWpfApp
+﻿namespace AdornableWpfApp.Views
 {
     /// <summary>
     /// MainWindow.xaml の相互作用ロジック

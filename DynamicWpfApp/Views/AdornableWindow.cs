@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -57,7 +58,6 @@ namespace AdornableWpfApp.Views
                 if (adornErrorContent != null)
                 {
                     (Content as Panel).Children.Remove(adornErrorContent);
-
                     adornErrorContent = null;
                 }
 
@@ -70,10 +70,7 @@ namespace AdornableWpfApp.Views
                     DataContext = null;
                 }
 
-                if (adornContentViewModel != null)
-                {
-                    adornContentViewModel = null;
-                }
+                adornContentViewModel = null;
 
                 if (adornContentCodeBehind != null)
                 {
@@ -91,16 +88,16 @@ namespace AdornableWpfApp.Views
                         UnregisterName(additionalName);
                     }
                     adornNames.Clear();
-
                     (Content as Panel).Children.Remove(adornContent);
-
                     adornContent = null;
                 }
 
-                if (File.Exists(@"Views\MainWindowAdorner.xaml") == true)
+                string xamlPath = GetAdornerXamlPath(this);
+
+                if (File.Exists(xamlPath) == true)
                 {
                     // 例外が出る可能性がある
-                    adornContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(@"Views\MainWindowAdorner.xaml");
+                    adornContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(xamlPath);
                     adornContent.Name = "adornContent";
                     (Content as Panel).Children.Add(adornContent);
                     RegisterName(adornContent.Name, adornContent);
@@ -118,27 +115,31 @@ namespace AdornableWpfApp.Views
                     }
                 }
 
-                if (File.Exists(@"Views\MainWindowAdorner.xaml.cs") == true)
+                string codeBehindPath = GetCodeBehindPath(this);
+
+                if (File.Exists(codeBehindPath) == true)
                 {
                     // 例外が出る可能性がある
                     adornContentCodeBehind = AssemblyFromCsFactory.Instance.GetNewInstance(
-                        @"Views\MainWindowAdorner.xaml.cs",
-                        "AdornableWpfApp.Views.MainWindowAdorner",
+                        codeBehindPath,
+                        GetCodeBehindClassName(this),
                         this);
                 }
 
-                if (File.Exists(@"ViewModels\MainWindowViewModelAdorner.cs") == true)
+                string viewModelPath = GetViewModelPath(this);
+
+                if (File.Exists(viewModelPath) == true)
                 {
                     // 例外が出る可能性がある
                     adornContentViewModel = AssemblyFromCsFactory.Instance.GetNewInstance(
-                        @"ViewModels\MainWindowViewModelAdorner.cs",
-                        "AdornableWpfApp.ViewModels.MainWindowViewModelAdorner");
+                        viewModelPath,
+                        GetAdornerViewModelClassName(this));
 
                     DataContext = adornContentViewModel;
                 }
                 else
                 {
-                    Type type = GetType().Assembly.GetType(@"AdornableWpfApp.ViewModels.MainWindowViewModel");
+                    Type type = GetType().Assembly.GetType(GetViewModelClassName(this));
                     if (type != null)
                     {
                         DataContext = Activator.CreateInstance(type);
@@ -159,6 +160,48 @@ namespace AdornableWpfApp.Views
 
                 (Content as Panel).Children.Add(adornErrorContent);
             }
+        }
+
+        private string GetAdornerXamlPath(AdornableWindow target)
+        {
+            string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
+
+            Match match = Regex.Match(targetFullName, @"^(?<head>.*?)\.(?<folder>[^\.]+)\.(?<class>[^\.]+)$");
+
+            return $@"{match.Groups["folder"].Value}\{match.Groups["head"].Value}.{match.Groups["folder"].Value}.{match.Groups["class"].Value}Adorner.xaml"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml
+        }
+
+        private string GetCodeBehindPath(AdornableWindow target)
+        {
+            return $@"{GetAdornerXamlPath(target)}.cs"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml.cs
+        }
+
+        private string GetCodeBehindClassName(AdornableWindow target)
+        {
+            return $@"{target.GetType().FullName}Adorner"; // AdornableWpfApp.Views.MainWindowAdorner
+        }
+
+        private string GetViewModelPath(AdornableWindow target)
+        {
+            string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
+
+            Match match = Regex.Match(targetFullName, @"^(?<head>.*?)\.(?<folder>[^\.]+)\.(?<class>[^\.]+)$");
+
+            return $@"ViewModels\{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModelAdorner.cs"; // ViewModels\AdornableWpfApp.ViewModels.MainWindowViewModelAdorner.cs
+        }
+
+        private string GetViewModelClassName(AdornableWindow target)
+        {
+            string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
+
+            Match match = Regex.Match(targetFullName, @"^(?<head>.*?)\.(?<folder>[^\.]+)\.(?<class>[^\.]+)$");
+
+            return $@"{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModel"; // AdornableWpfApp.ViewModels.MainWindowViewModel
+        }
+
+        private string GetAdornerViewModelClassName(AdornableWindow target)
+        {
+            return $@"{GetViewModelClassName(target)}Adorner"; // AdornableWpfApp.ViewModels.MainWindowViewModelAdorner
         }
     }
 }
