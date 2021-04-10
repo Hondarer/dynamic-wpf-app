@@ -11,7 +11,7 @@ using System.Reflection;
 using System.Security;
 using System.Text;
 
-namespace DynamicWpfApp.Utils
+namespace AdornableWpfApp.Utils
 {
     public class AssemblyFromCsFactory
     {
@@ -29,17 +29,18 @@ namespace DynamicWpfApp.Utils
                 {
                     return false;
                 }
+
                 if ((obj is AssemblyCacheEntry) != true)
                 {
                     return false;
                 }
 
-                return this.guid == (obj as AssemblyCacheEntry).guid;
+                return guid == (obj as AssemblyCacheEntry).guid;
             }
 
             public override int GetHashCode()
             {
-                return base.GetHashCode();
+                return guid.GetHashCode();
             }
         }
 
@@ -126,13 +127,13 @@ namespace DynamicWpfApp.Utils
 
             assemblyCacheEntry.lastUpdated = File.GetLastWriteTimeUtc(absolutePath);
 
-            Debug.Print("Load {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
+            Debug.Print("Start compile {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
 
             SourceText sourceText;
             SyntaxTree syntaxTree;
-            using (FileStream srXamlCs = new FileStream(absolutePath, FileMode.Open))
+            using (FileStream sourceStream = new FileStream(absolutePath, FileMode.Open))
             {
-                sourceText = SourceText.From(srXamlCs, canBeEmbedded: true);
+                sourceText = SourceText.From(sourceStream, canBeEmbedded: true);
                 syntaxTree = CSharpSyntaxTree.ParseText(sourceText);
             }
 
@@ -243,6 +244,7 @@ namespace DynamicWpfApp.Utils
                 }
             }
 
+            Debug.Print("Done compile {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
             return assemblyCacheEntry.assembly;
         }
 

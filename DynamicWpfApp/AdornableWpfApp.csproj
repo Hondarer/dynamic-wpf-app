@@ -7,8 +7,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{7D8C9BB3-9AF0-4B69-8E9C-1FB44586F987}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>DynamicWpfApp</RootNamespace>
-    <AssemblyName>DynamicWpfApp</AssemblyName>
+    <RootNamespace>AdornableWpfApp</RootNamespace>
+    <AssemblyName>AdornableWpfApp</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -91,8 +91,8 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Content Include="Views\MainWindowEx.xaml.cs">
-      <DependentUpon>MainWindowEx.xaml</DependentUpon>
+    <Content Include="Views\MainWindowAdorner.xaml.cs">
+      <DependentUpon>MainWindowAdorner.xaml</DependentUpon>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Page Include="Views\MainWindow.xaml">
@@ -107,15 +107,15 @@
     <Compile Include="Utils\AssemblyFromCsFactory.cs" />
     <Compile Include="Utils\FrameworkElementFromXamlFactory.cs" />
     <Compile Include="ViewModels\MainWindowViewModel.cs" />
-    <Content Include="ViewModels\MainWindowViewModelEx.cs">
+    <Content Include="ViewModels\MainWindowViewModelAdorner.cs">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Compile Include="Views\ExpandableWindow.cs" />
+    <Compile Include="Views\AdornableWindow.cs" />
     <Compile Include="Views\MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Content Include="Views\MainWindowEx.xaml">
+    <Content Include="Views\MainWindowAdorner.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>

@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace DynamicWpfApp.ViewModels
+namespace AdornableWpfApp.ViewModels
 {
     public class MainWindowViewModel : INotifyPropertyChanged
     {

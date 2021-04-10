@@ -1,11 +1,11 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
 
-namespace DynamicWpfApp.Views
+namespace AdornableWpfApp.Views
 {
-    public class MainWindowEx
+    public class MainWindowAdorner
     {
-        public MainWindowEx(FrameworkElement window)
+        public MainWindowAdorner(FrameworkElement window)
         {
             TextBlock textBlock = window.FindName("textBlock") as TextBlock;
             textBlock.Text = "ABCDE";

@@ -5,13 +5,12 @@ using System.IO;
 using System.Windows;
 using System.Windows.Markup;
 
-namespace DynamicWpfApp.Utils
+namespace AdornableWpfApp.Utils
 {
     public class FrameworkElementFromXamlFactory
     {
         private class FrameworkElementCacheEntry
         {
-            public Guid guid = Guid.NewGuid();
             public FrameworkElement frameworkElement;
             public int generation = 0;
             public DateTime lastUpdated;
@@ -77,7 +76,7 @@ namespace DynamicWpfApp.Utils
 
             frameworkElementCacheEntry.lastUpdated = File.GetLastWriteTimeUtc(absolutePath);
 
-            Debug.Print("Load {0} updated at {1}, generation={2}", absolutePath, frameworkElementCacheEntry.lastUpdated.ToLocalTime(), frameworkElementCacheEntry.generation);
+            Debug.Print("Start parse {0} updated at {1}, generation={2}", absolutePath, frameworkElementCacheEntry.lastUpdated.ToLocalTime(), frameworkElementCacheEntry.generation);
 
             using (StreamReader srImplXaml = new StreamReader(absolutePath))
             {
@@ -96,6 +95,7 @@ namespace DynamicWpfApp.Utils
                 frameworkElementCache.Add(absolutePath, frameworkElementCacheEntry);
             }
 
+            Debug.Print("Done parse {0} updated at {1}, generation={2}", absolutePath, frameworkElementCacheEntry.lastUpdated.ToLocalTime(), frameworkElementCacheEntry.generation);
             return frameworkElementCacheEntry.frameworkElement;
         }
     }

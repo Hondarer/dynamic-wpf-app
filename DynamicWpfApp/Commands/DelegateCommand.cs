@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace DynamicWpfApp.Commands
+namespace AdornableWpfApp.Commands
 {
     public class DelegateCommand : ICommand
     {

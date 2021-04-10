@@ -1,9 +1,8 @@
-﻿<Application x:Class="DynamicWpfApp.App"
+﻿<Application x:Class="AdornableWpfApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:DynamicWpfApp"
+             xmlns:local="clr-namespace:AdornableWpfApp"
              StartupUri="Views/MainWindow.xaml">
     <Application.Resources>
-         
     </Application.Resources>
 </Application>
