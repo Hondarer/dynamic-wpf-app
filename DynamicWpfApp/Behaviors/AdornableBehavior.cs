@@ -16,7 +16,7 @@ namespace AdornableWpfApp.Behaviors
 {
     public class AdornableBehavior : Behavior<ContentControl>
     {
-        private InputBinding refreshAdornBinding = null;
+        private InputBinding refreshAdornerBinding = null;
 
         /// <summary>
         /// 追加のコンテントの名前を表します。
@@ -51,11 +51,11 @@ namespace AdornableWpfApp.Behaviors
         /// <summary>
         /// 追加のコンテントの更新コマンドを保持します。
         /// </summary>
-        public DelegateCommand RefreshAdditionalCommand { get; }
+        public DelegateCommand RefreshAdornerCommand { get; }
 
         public AdornableBehavior()
         {
-            RefreshAdditionalCommand = new DelegateCommand(RefreshAdorner);
+            RefreshAdornerCommand = new DelegateCommand(RefreshAdorner);
         }
 
         protected override void OnAttached()
@@ -67,10 +67,10 @@ namespace AdornableWpfApp.Behaviors
 
         protected override void OnDetaching()
         {
-            if (refreshAdornBinding != null)
+            if (refreshAdornerBinding != null)
             {
-                AssociatedObject.InputBindings.Remove(refreshAdornBinding);
-                refreshAdornBinding = null;
+                AssociatedObject.InputBindings.Remove(refreshAdornerBinding);
+                refreshAdornerBinding = null;
             }
 
             base.OnDetaching();
@@ -80,8 +80,8 @@ namespace AdornableWpfApp.Behaviors
         {
             RefreshAdorner();
 
-            refreshAdornBinding = new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdditionalCommand };
-            AssociatedObject.InputBindings.Add(refreshAdornBinding);
+            refreshAdornerBinding = new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdornerCommand };
+            AssociatedObject.InputBindings.Add(refreshAdornerBinding);
         }
 
         public void RefreshAdorner(object parameter = null)

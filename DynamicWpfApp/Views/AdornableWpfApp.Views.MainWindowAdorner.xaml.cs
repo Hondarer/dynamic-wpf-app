@@ -1,14 +1,24 @@
-﻿using System.Windows;
+﻿using System.Diagnostics;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace AdornableWpfApp.Views
 {
     public class MainWindowAdorner
     {
-        public MainWindowAdorner(FrameworkElement window)
+        TextBlock textBlock;
+
+        public MainWindowAdorner(ContentControl contentControl)
         {
-            TextBlock textBlock = window.FindName("textBlock") as TextBlock;
+            textBlock = contentControl.FindName("textBlock") as TextBlock;
             textBlock.Text = "ABCDE";
+
+            (contentControl.FindName("button") as Button).Click += Button_Click;
+        }
+
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            textBlock.Text = "Click!";
         }
     }
 }

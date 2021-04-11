@@ -8,7 +8,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Security;
 using System.Text;
 
 namespace AdornableWpfApp.Utils
@@ -177,7 +176,9 @@ namespace AdornableWpfApp.Utils
 
             // analyse and generate IL code from syntax tree
             CSharpCompilationOptions cSharpCompilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
-#if !DEBUG
+#if DEBUG
+            cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Debug);
+#else
             cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
 #endif
 
@@ -229,7 +230,7 @@ namespace AdornableWpfApp.Utils
                     assemblyStream.Seek(0, SeekOrigin.Begin);
                     symbolsStream.Seek(0, SeekOrigin.Begin);
 
-                    assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray(), SecurityContextSource.CurrentAppDomain);
+                    assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray());
 
                     if (assemblyCache.ContainsValue(assemblyCacheEntry) == false)
                     {
