@@ -1,4 +1,6 @@
-﻿using AdornableWpfApp.Commands;
+﻿// TODO: ContentControl へのビヘイビアとして実装できる気がする。
+
+using AdornableWpfApp.Commands;
 using AdornableWpfApp.Utils;
 using System;
 using System.Collections.Generic;
@@ -13,21 +15,44 @@ using System.Windows.Media;
 
 namespace AdornableWpfApp.Views
 {
+    /// <summary>
+    /// 追加可能なウインドウを提供します。
+    /// </summary>
     public class AdornableWindow : Window
     {
+        /// <summary>
+        /// 追加のコンテントの名前を表します。
+        /// </summary>
+        public const string ADORN_CONTENT_NAME = "adornContent";
+
         /// <summary>
         /// 追加のコンテントのコードビハインドを保持します。
         /// </summary>
         private object adornContentCodeBehind = null;
 
+        /// <summary>
+        /// 追加のコンテントを保持します。
+        /// </summary>
         private FrameworkElement adornContent = null;
 
+        /// <summary>
+        /// 追加の際に発生したエラーを表示するコンテントを保持します。
+        /// </summary>
         private FrameworkElement adornErrorContent = null;
 
+        /// <summary>
+        /// 追加のコンテントで管理されている名前のリストを保持します。
+        /// </summary>
         private List<string> adornNames = new List<string>();
 
+        /// <summary>
+        /// 追加のコンテントの ViewModel を保持します。
+        /// </summary>
         private object adornContentViewModel = null;
 
+        /// <summary>
+        /// 追加のコンテントの更新コマンドを保持します。
+        /// </summary>
         public DelegateCommand RefreshAdditionalCommand { get; }
 
         public AdornableWindow()
@@ -35,8 +60,6 @@ namespace AdornableWpfApp.Views
             Loaded += AdornableWindow_Loaded;
 
             RefreshAdditionalCommand = new DelegateCommand(RefreshAdorner);
-
-            InputBindings.Add(new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdditionalCommand });
         }
 
         private void AdornableWindow_Loaded(object sender, RoutedEventArgs e)
@@ -44,6 +67,8 @@ namespace AdornableWpfApp.Views
             Loaded -= AdornableWindow_Loaded;
 
             RefreshAdorner();
+
+            InputBindings.Add(new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdditionalCommand });
         }
 
         public void RefreshAdorner(object parameter=null)
@@ -98,7 +123,7 @@ namespace AdornableWpfApp.Views
                 {
                     // 例外が出る可能性がある
                     adornContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(xamlPath);
-                    adornContent.Name = "adornContent";
+                    adornContent.Name = ADORN_CONTENT_NAME;
                     (Content as Panel).Children.Add(adornContent);
                     RegisterName(adornContent.Name, adornContent);
                     adornNames.Add(adornContent.Name);

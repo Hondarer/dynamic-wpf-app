@@ -3,7 +3,7 @@
 namespace AdornableWpfApp
 {
     /// <summary>
-    /// App.xaml の相互作用ロジック
+    /// <see cref="App"/> の相互作用ロジックを提供します。
     /// </summary>
     public partial class App : Application
     {
