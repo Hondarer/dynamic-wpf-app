@@ -1,6 +1,4 @@
-﻿// TODO: ContentControl へのビヘイビアとして実装できる気がする。
-
-using AdornableWpfApp.Commands;
+﻿using AdornableWpfApp.Commands;
 using AdornableWpfApp.Utils;
 using System;
 using System.Collections.Generic;
@@ -10,16 +8,16 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interactivity;
 using System.Windows.Markup;
 using System.Windows.Media;
 
-namespace AdornableWpfApp.Views
+namespace AdornableWpfApp.Behaviors
 {
-    /// <summary>
-    /// 追加可能なウインドウを提供します。
-    /// </summary>
-    public class AdornableWindow : Window
+    public class AdornableBehavior : Behavior<ContentControl>
     {
+        private InputBinding refreshAdornBinding = null;
+
         /// <summary>
         /// 追加のコンテントの名前を表します。
         /// </summary>
@@ -55,25 +53,40 @@ namespace AdornableWpfApp.Views
         /// </summary>
         public DelegateCommand RefreshAdditionalCommand { get; }
 
-        public AdornableWindow()
+        public AdornableBehavior()
         {
-            Loaded += AdornableWindow_Loaded;
-
             RefreshAdditionalCommand = new DelegateCommand(RefreshAdorner);
         }
 
-        private void AdornableWindow_Loaded(object sender, RoutedEventArgs e)
+        protected override void OnAttached()
         {
-            Loaded -= AdornableWindow_Loaded;
+            base.OnAttached();
 
-            RefreshAdorner();
-
-            InputBindings.Add(new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdditionalCommand });
+            AssociatedObject.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() => AssociatedObjectLoaded()));
         }
 
-        public void RefreshAdorner(object parameter=null)
+        protected override void OnDetaching()
         {
-            if ((Content is Panel) != true)
+            if (refreshAdornBinding != null)
+            {
+                AssociatedObject.InputBindings.Remove(refreshAdornBinding);
+                refreshAdornBinding = null;
+            }
+
+            base.OnDetaching();
+        }
+
+        private void AssociatedObjectLoaded()
+        {
+            RefreshAdorner();
+
+            refreshAdornBinding = new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdditionalCommand };
+            AssociatedObject.InputBindings.Add(refreshAdornBinding);
+        }
+
+        public void RefreshAdorner(object parameter = null)
+        {
+            if ((AssociatedObject.Content is Panel) != true)
             {
                 return;
             }
@@ -82,17 +95,17 @@ namespace AdornableWpfApp.Views
             {
                 if (adornErrorContent != null)
                 {
-                    (Content as Panel).Children.Remove(adornErrorContent);
+                    (AssociatedObject.Content as Panel).Children.Remove(adornErrorContent);
                     adornErrorContent = null;
                 }
 
-                if (DataContext != null)
+                if (AssociatedObject.DataContext != null)
                 {
-                    if (DataContext is IDisposable)
+                    if (AssociatedObject.DataContext is IDisposable)
                     {
-                        (DataContext as IDisposable).Dispose();
+                        (AssociatedObject.DataContext as IDisposable).Dispose();
                     }
-                    DataContext = null;
+                    AssociatedObject.DataContext = null;
                 }
 
                 adornContentViewModel = null;
@@ -110,22 +123,22 @@ namespace AdornableWpfApp.Views
                 {
                     foreach (string additionalName in adornNames)
                     {
-                        UnregisterName(additionalName);
+                        AssociatedObject.UnregisterName(additionalName);
                     }
                     adornNames.Clear();
-                    (Content as Panel).Children.Remove(adornContent);
+                    (AssociatedObject.Content as Panel).Children.Remove(adornContent);
                     adornContent = null;
                 }
 
-                string xamlPath = GetAdornerXamlPath(this);
+                string xamlPath = GetAdornerXamlPath(AssociatedObject);
 
                 if (File.Exists(xamlPath) == true)
                 {
                     // 例外が出る可能性がある
                     adornContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(xamlPath);
                     adornContent.Name = ADORN_CONTENT_NAME;
-                    (Content as Panel).Children.Add(adornContent);
-                    RegisterName(adornContent.Name, adornContent);
+                    (AssociatedObject.Content as Panel).Children.Add(adornContent);
+                    AssociatedObject.RegisterName(adornContent.Name, adornContent);
                     adornNames.Add(adornContent.Name);
 
                     // XamlReader で読み込むと、読み込んだ xaml のルート要素に NameScope が構築される。
@@ -135,39 +148,39 @@ namespace AdornableWpfApp.Views
 
                     foreach (KeyValuePair<string, object> nameScopeEntry in gridNameScope.AsEnumerable())
                     {
-                        RegisterName(nameScopeEntry.Key, nameScopeEntry.Value);
+                        AssociatedObject.RegisterName(nameScopeEntry.Key, nameScopeEntry.Value);
                         adornNames.Add(nameScopeEntry.Key);
                     }
                 }
 
-                string codeBehindPath = GetCodeBehindPath(this);
+                string codeBehindPath = GetCodeBehindPath(AssociatedObject);
 
                 if (File.Exists(codeBehindPath) == true)
                 {
                     // 例外が出る可能性がある
                     adornContentCodeBehind = AssemblyFromCsFactory.Instance.GetNewInstance(
                         codeBehindPath,
-                        GetCodeBehindClassName(this),
-                        this);
+                        GetCodeBehindClassName(AssociatedObject),
+                        AssociatedObject);
                 }
 
-                string viewModelPath = GetViewModelPath(this);
+                string viewModelPath = GetViewModelPath(AssociatedObject);
 
                 if (File.Exists(viewModelPath) == true)
                 {
                     // 例外が出る可能性がある
                     adornContentViewModel = AssemblyFromCsFactory.Instance.GetNewInstance(
                         viewModelPath,
-                        GetAdornerViewModelClassName(this));
+                        GetAdornerViewModelClassName(AssociatedObject));
 
-                    DataContext = adornContentViewModel;
+                    AssociatedObject.DataContext = adornContentViewModel;
                 }
                 else
                 {
-                    Type type = GetType().Assembly.GetType(GetViewModelClassName(this));
+                    Type type = GetType().Assembly.GetType(GetViewModelClassName(AssociatedObject));
                     if (type != null)
                     {
-                        DataContext = Activator.CreateInstance(type);
+                        AssociatedObject.DataContext = Activator.CreateInstance(type);
                     }
                 }
             }
@@ -183,11 +196,11 @@ namespace AdornableWpfApp.Views
                     VerticalScrollBarVisibility = ScrollBarVisibility.Auto
                 };
 
-                (Content as Panel).Children.Add(adornErrorContent);
+                (AssociatedObject.Content as Panel).Children.Add(adornErrorContent);
             }
         }
 
-        private string GetAdornerXamlPath(AdornableWindow target)
+        private string GetAdornerXamlPath(ContentControl target)
         {
             string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
 
@@ -196,17 +209,17 @@ namespace AdornableWpfApp.Views
             return $@"{match.Groups["folder"].Value}\{match.Groups["head"].Value}.{match.Groups["folder"].Value}.{match.Groups["class"].Value}Adorner.xaml"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml
         }
 
-        private string GetCodeBehindPath(AdornableWindow target)
+        private string GetCodeBehindPath(ContentControl target)
         {
             return $@"{GetAdornerXamlPath(target)}.cs"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml.cs
         }
 
-        private string GetCodeBehindClassName(AdornableWindow target)
+        private string GetCodeBehindClassName(ContentControl target)
         {
             return $@"{target.GetType().FullName}Adorner"; // AdornableWpfApp.Views.MainWindowAdorner
         }
 
-        private string GetViewModelPath(AdornableWindow target)
+        private string GetViewModelPath(ContentControl target)
         {
             string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
 
@@ -215,7 +228,7 @@ namespace AdornableWpfApp.Views
             return $@"ViewModels\{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModelAdorner.cs"; // ViewModels\AdornableWpfApp.ViewModels.MainWindowViewModelAdorner.cs
         }
 
-        private string GetViewModelClassName(AdornableWindow target)
+        private string GetViewModelClassName(ContentControl target)
         {
             string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
 
@@ -224,7 +237,7 @@ namespace AdornableWpfApp.Views
             return $@"{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModel"; // AdornableWpfApp.ViewModels.MainWindowViewModel
         }
 
-        private string GetAdornerViewModelClassName(AdornableWindow target)
+        private string GetAdornerViewModelClassName(ContentControl target)
         {
             return $@"{GetViewModelClassName(target)}Adorner"; // AdornableWpfApp.ViewModels.MainWindowViewModelAdorner
         }
