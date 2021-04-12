@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using AdornableWpfApp.Behaviors;
+using System.Windows;
+using System.Windows.Interactivity;
 
 namespace AdornableWpfApp.Views
 {
@@ -13,6 +15,10 @@ namespace AdornableWpfApp.Views
         public MainWindow()
         {
             InitializeComponent();
+
+            // コードビハインドでビヘイビアを追加する場合
+            // (継承されるようなクラスで、xaml が書けない際に利用する)
+            //Interaction.GetBehaviors(this).Add(new AdornableBehavior());
         }
     }
 }
