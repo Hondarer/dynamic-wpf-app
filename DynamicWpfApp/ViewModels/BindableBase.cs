@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace AdornableWpfLib.ViewModels
+namespace AdornableWpfApp.ViewModels
 {
     public class BindableBase : INotifyPropertyChanged
     {
@@ -55,6 +55,5 @@ namespace AdornableWpfLib.ViewModels
         }
 
         #endregion
-
     }
 }

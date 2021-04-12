@@ -1,6 +1,4 @@
-﻿using AdornableWpfLib.ViewModels;
-
-namespace AdornableWpfApp.ViewModels
+﻿namespace AdornableWpfApp.ViewModels
 {
     public class MainWindowViewModel : BindableBase
     {
