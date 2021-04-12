@@ -1,13 +1,13 @@
 ﻿using System;
 using System.Windows.Input;
 
-namespace AdornableWpfApp.Commands
+namespace AdornableWpfLib.Commands
 {
     public class DelegateCommand : ICommand
     {
-        private Action<object> execute;
+        private readonly Action<object> execute;
 
-        private Func<object, bool> canExecute;
+        private readonly Func<object, bool> canExecute;
 
         public DelegateCommand(Action<object> execute) : this(execute, o => true)
         {

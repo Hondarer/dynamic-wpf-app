@@ -1,4 +1,4 @@
-﻿using AdornableWpfApp.Behaviors;
+﻿using AdornableWpfLib.Behaviors;
 using System.Windows;
 using System.Windows.Interactivity;
 

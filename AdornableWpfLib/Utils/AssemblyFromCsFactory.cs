@@ -10,7 +10,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 
-namespace AdornableWpfApp.Utils
+namespace AdornableWpfLib.Utils
 {
     public class AssemblyFromCsFactory
     {
@@ -43,7 +43,7 @@ namespace AdornableWpfApp.Utils
             }
         }
 
-        private Dictionary<string, AssemblyCacheEntry> assemblyCache = new Dictionary<string, AssemblyCacheEntry>();
+        private readonly Dictionary<string, AssemblyCacheEntry> assemblyCache = new Dictionary<string, AssemblyCacheEntry>();
 
         private static readonly object lockObject = new object();
 

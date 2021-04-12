@@ -1,5 +1,5 @@
-﻿using AdornableWpfApp.Commands;
-using AdornableWpfApp.Utils;
+﻿using AdornableWpfLib.Commands;
+using AdornableWpfLib.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,10 +12,16 @@ using System.Windows.Interactivity;
 using System.Windows.Markup;
 using System.Windows.Media;
 
-namespace AdornableWpfApp.Behaviors
+namespace AdornableWpfLib.Behaviors
 {
+    /// <summary>
+    /// 追加可能なビヘイビアを提供します。
+    /// </summary>
     public class AdornableBehavior : Behavior<ContentControl>
     {
+        /// <summary>
+        /// 追加のコンテントの更新コマンドの <see cref="InputBinding"/> を保持します。
+        /// </summary>
         private InputBinding refreshAdornerBinding = null;
 
         /// <summary>
@@ -41,7 +47,7 @@ namespace AdornableWpfApp.Behaviors
         /// <summary>
         /// 追加のコンテントで管理されている名前のリストを保持します。
         /// </summary>
-        private List<string> adornNames = new List<string>();
+        private readonly List<string> adornNames = new List<string>();
 
         /// <summary>
         /// 追加のコンテントの ViewModel を保持します。
@@ -53,11 +59,17 @@ namespace AdornableWpfApp.Behaviors
         /// </summary>
         public DelegateCommand RefreshAdornerCommand { get; }
 
+        /// <summary>
+        /// <see cref="AdornableBehavior"/> の新しいインスタンスを生成します。
+        /// </summary>
         public AdornableBehavior()
         {
             RefreshAdornerCommand = new DelegateCommand(RefreshAdorner);
         }
 
+        /// <summary>
+        /// Called after the behavior is attached to an AssociatedObject.
+        /// </summary>
         protected override void OnAttached()
         {
             base.OnAttached();
@@ -65,6 +77,9 @@ namespace AdornableWpfApp.Behaviors
             AssociatedObject.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() => AssociatedObjectLoaded()));
         }
 
+        /// <summary>
+        /// Called when the behavior is being detached from its AssociatedObject.
+        /// </summary>
         protected override void OnDetaching()
         {
             if (refreshAdornerBinding != null)
@@ -76,6 +91,9 @@ namespace AdornableWpfApp.Behaviors
             base.OnDetaching();
         }
 
+        /// <summary>
+        /// 関連付けされたオブジェクトの読み込みが完了されたときの処理をします。
+        /// </summary>
         private void AssociatedObjectLoaded()
         {
             RefreshAdorner();
@@ -84,6 +102,10 @@ namespace AdornableWpfApp.Behaviors
             AssociatedObject.InputBindings.Add(refreshAdornerBinding);
         }
 
+        /// <summary>
+        /// 追加のコンテントを更新します。
+        /// </summary>
+        /// <param name="parameter">コマンドのパラメーター。使用しません。省略可能です。規定値は <c>null</c> です。</param>
         public void RefreshAdorner(object parameter = null)
         {
             if ((AssociatedObject.Content is Panel) != true)
@@ -134,7 +156,6 @@ namespace AdornableWpfApp.Behaviors
 
                 if (File.Exists(xamlPath) == true)
                 {
-                    // 例外が出る可能性がある
                     adornContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(xamlPath);
                     adornContent.Name = ADORN_CONTENT_NAME;
                     (AssociatedObject.Content as Panel).Children.Add(adornContent);
@@ -157,7 +178,6 @@ namespace AdornableWpfApp.Behaviors
 
                 if (File.Exists(codeBehindPath) == true)
                 {
-                    // 例外が出る可能性がある
                     adornContentCodeBehind = AssemblyFromCsFactory.Instance.GetNewInstance(
                         codeBehindPath,
                         GetCodeBehindClassName(AssociatedObject),
@@ -168,7 +188,6 @@ namespace AdornableWpfApp.Behaviors
 
                 if (File.Exists(viewModelPath) == true)
                 {
-                    // 例外が出る可能性がある
                     adornContentViewModel = AssemblyFromCsFactory.Instance.GetNewInstance(
                         viewModelPath,
                         GetAdornerViewModelClassName(AssociatedObject));
@@ -200,6 +219,11 @@ namespace AdornableWpfApp.Behaviors
             }
         }
 
+        /// <summary>
+        /// 追加のコンテントの xaml ファイルのパスを返します。
+        /// </summary>
+        /// <param name="target">対象の <see cref="ContentControl"/>。</param>
+        /// <returns>追加のコンテントの xaml ファイルのパス。</returns>
         private string GetAdornerXamlPath(ContentControl target)
         {
             string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow

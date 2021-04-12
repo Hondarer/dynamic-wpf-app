@@ -5,7 +5,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Markup;
 
-namespace AdornableWpfApp.Utils
+namespace AdornableWpfLib.Utils
 {
     public class FrameworkElementFromXamlFactory
     {
@@ -16,7 +16,7 @@ namespace AdornableWpfApp.Utils
             public DateTime lastUpdated;
         }
 
-        private Dictionary<string, FrameworkElementCacheEntry> frameworkElementCache = new Dictionary<string, FrameworkElementCacheEntry>();
+        private readonly Dictionary<string, FrameworkElementCacheEntry> frameworkElementCache = new Dictionary<string, FrameworkElementCacheEntry>();
 
         private static readonly object lockObject = new object();
 
