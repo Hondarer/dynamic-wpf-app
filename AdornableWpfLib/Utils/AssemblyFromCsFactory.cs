@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AdornableWpfLib.Utils
 {
@@ -19,7 +20,8 @@ namespace AdornableWpfLib.Utils
             public Guid guid = Guid.NewGuid();
             public Assembly assembly;
             public int generation = 0;
-            public DateTime lastUpdated;
+            public Dictionary<string, DateTime> lastUpdatedDictionary = new Dictionary<string, DateTime>();
+            public DateTime lastBuilt;
             public MetadataReference metadataReference;
 
             public override bool Equals(object obj)
@@ -76,7 +78,8 @@ namespace AdornableWpfLib.Utils
 
         private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
-            // 既定のアセンブリ解決処理で動的生成されたアセンブリを Load しようとすると、
+            // 既定のアセンブリ解決処理で
+            // 動的生成されたアセンブリを Load しようとすると
             // FileNotFoundException が発生してしまうため、カスタム解決処理を組み入れる。
 
             // 動的生成されたアセンブリの要求であれば、このクラスからアセンブリを返す。
@@ -94,22 +97,35 @@ namespace AdornableWpfLib.Utils
 
         public Assembly GetAssembly(string path)
         {
-            if (File.Exists(path) == false)
+            string directoryName = Path.GetDirectoryName(Path.GetFullPath(path));
+            string fileName = Path.GetFileName(path);
+
+            List<string> absolutePaths = Directory.GetFiles(directoryName, fileName).ToList();
+            if (absolutePaths.Count == 0)
             {
                 throw new FileNotFoundException(path);
             }
 
-            string absolutePath = Path.GetFullPath(path);
-
             AssemblyCacheEntry assemblyCacheEntry;
 
-            if (assemblyCache.ContainsKey(absolutePath) == true)
+            if (assemblyCache.ContainsKey(path) == true)
             {
-                assemblyCacheEntry = assemblyCache[absolutePath];
+                assemblyCacheEntry = assemblyCache[path];
 
-                if (assemblyCacheEntry.lastUpdated >= File.GetLastWriteTimeUtc(absolutePath))
+                bool containUpdated = false;
+                foreach (string absolutePath in absolutePaths)
                 {
-                    Debug.Print("Exists {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
+                    DateTime lastWriteTime = File.GetLastWriteTimeUtc(absolutePath);
+                    if (assemblyCacheEntry.lastUpdatedDictionary[absolutePath] < lastWriteTime)
+                    {
+                        containUpdated = true;
+                        break;
+                    }
+                }
+
+                if (containUpdated == false)
+                {
+                    Debug.Print("Latest {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
                     return assemblyCacheEntry.assembly;
                 }
 
@@ -124,16 +140,25 @@ namespace AdornableWpfLib.Utils
                 assemblyCacheEntry = new AssemblyCacheEntry();
             }
 
-            assemblyCacheEntry.lastUpdated = File.GetLastWriteTimeUtc(absolutePath);
-
-            Debug.Print("Start compile {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
-
-            SourceText sourceText;
-            SyntaxTree syntaxTree;
-            using (FileStream sourceStream = new FileStream(absolutePath, FileMode.Open))
+            foreach (string absolutePath in absolutePaths)
             {
-                sourceText = SourceText.From(sourceStream, canBeEmbedded: true);
-                syntaxTree = CSharpSyntaxTree.ParseText(sourceText);
+                assemblyCacheEntry.lastUpdatedDictionary.Add(absolutePath, File.GetLastWriteTimeUtc(absolutePath));
+            }
+
+            Debug.Print("Start compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
+
+            Dictionary<string, SourceText> sourceTextDictionary = new Dictionary<string, SourceText>();
+            List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
+
+            foreach (string absolutePath in absolutePaths)
+            {
+                using (FileStream sourceStream = new FileStream(absolutePath, FileMode.Open))
+                {
+                    SourceText sourceText = SourceText.From(sourceStream, canBeEmbedded: true);
+                    syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText));
+
+                    sourceTextDictionary.Add(absolutePath, sourceText);
+                }
             }
 
             List<MetadataReference> MetadataReferences = new List<MetadataReference>();
@@ -182,11 +207,11 @@ namespace AdornableWpfLib.Utils
             cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
 #endif
 
-            string assemblyName = $"{Path.GetFileNameWithoutExtension(absolutePath)}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
+            string assemblyName = $"{Regex.Replace(path, @"[\\:\.]", "-")}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
 
             CSharpCompilation compilation = CSharpCompilation.Create(
                 $"{assemblyName}.dll",
-                syntaxTrees: new[] { syntaxTree },
+                syntaxTrees: syntaxTrees,
                 references: references,
                 options: cSharpCompilationOptions);
 
@@ -197,10 +222,11 @@ namespace AdornableWpfLib.Utils
                     debugInformationFormat: DebugInformationFormat.PortablePdb,
                     pdbFilePath: $"{assemblyName}.pdb");
 
-                List<EmbeddedText> embeddedTexts = new List<EmbeddedText>()
-                    {
-                        EmbeddedText.FromSource(absolutePath, sourceText),
-                    };
+                List<EmbeddedText> embeddedTexts = new List<EmbeddedText>();
+                foreach (string absolutePath in absolutePaths)
+                {
+                    embeddedTexts.Add(EmbeddedText.FromSource(absolutePath, sourceTextDictionary[absolutePath]));
+                }
 
                 EmitResult result = compilation.Emit(
                     peStream: assemblyStream,
@@ -217,7 +243,7 @@ namespace AdornableWpfLib.Utils
 
                     StringBuilder sb = new StringBuilder();
 
-                    sb.AppendLine($"Compilation error(s) has occurred in {absolutePath}.");
+                    sb.AppendLine($"Compilation error(s) has occurred in {path}.");
                     foreach (Diagnostic diagnostic in failures)
                     {
                         sb.AppendLine(diagnostic.ToString());
@@ -234,18 +260,20 @@ namespace AdornableWpfLib.Utils
 
                     if (assemblyCache.ContainsValue(assemblyCacheEntry) == false)
                     {
-                        assemblyCache.Add(absolutePath, assemblyCacheEntry);
+                        assemblyCache.Add(path, assemblyCacheEntry);
                     }
 
                     assemblyStream.Seek(0, SeekOrigin.Begin);
 
-                    // MetadataReference の生成はイメージからしか行うべきなので、このタイミングで保持しておく。
+                    // MetadataReference の生成はイメージから行うべきなので、このタイミングで保持しておく。
                     // (Assembly から生成する方法は Obsolete になっている。)
                     assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(assemblyStream);
                 }
             }
 
-            Debug.Print("Done compile {0} updated at {1}, generation={2}", absolutePath, assemblyCacheEntry.lastUpdated.ToLocalTime(), assemblyCacheEntry.generation);
+            assemblyCacheEntry.lastBuilt = DateTime.UtcNow;
+            Debug.Print("Done compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
+
             return assemblyCacheEntry.assembly;
         }
 

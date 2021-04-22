@@ -62,7 +62,7 @@ namespace AdornableWpfLib.Utils
 
                 if (frameworkElementCacheEntry.lastUpdated >= File.GetLastWriteTimeUtc(absolutePath))
                 {
-                    Debug.Print("Exists {0} updated at {1}, generation={2}", absolutePath, frameworkElementCacheEntry.lastUpdated.ToLocalTime(), frameworkElementCacheEntry.generation);
+                    Debug.Print("Latest {0} updated at {1}, generation={2}", absolutePath, frameworkElementCacheEntry.lastUpdated.ToLocalTime(), frameworkElementCacheEntry.generation);
                     return frameworkElementCacheEntry.frameworkElement;
                 }
 
