@@ -97,8 +97,20 @@ namespace AdornableWpfLib.Utils
 
         public Assembly GetAssembly(string path)
         {
-            string directoryName = Path.GetDirectoryName(Path.GetFullPath(path));
-            string fileName = Path.GetFileName(path);
+            string directoryName;
+            string fileName;
+
+            if (path.Contains(@"\") == true)
+            {
+                int lastIndex = path.LastIndexOf(@"\");
+                directoryName = Path.GetFullPath(path.Substring(0, lastIndex+1));
+                fileName = path.Substring(lastIndex+1);
+            }
+            else
+            {
+                directoryName = Directory.GetCurrentDirectory();
+                fileName = path;
+            }
 
             List<string> absolutePaths = Directory.GetFiles(directoryName, fileName).ToList();
             if (absolutePaths.Count == 0)
@@ -150,12 +162,17 @@ namespace AdornableWpfLib.Utils
             Dictionary<string, SourceText> sourceTextDictionary = new Dictionary<string, SourceText>();
             List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
 
+            CSharpParseOptions parseOptions = new CSharpParseOptions();
+#if DEBUG
+            parseOptions = parseOptions.WithPreprocessorSymbols(CSharpCommandLineParser.ParseConditionalCompilationSymbols("DEBUG;TRACE", out IEnumerable<Diagnostic> diagnostics));
+#endif
+
             foreach (string absolutePath in absolutePaths)
             {
                 using (FileStream sourceStream = new FileStream(absolutePath, FileMode.Open))
                 {
                     SourceText sourceText = SourceText.From(sourceStream, canBeEmbedded: true);
-                    syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText));
+                    syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText, parseOptions));
 
                     sourceTextDictionary.Add(absolutePath, sourceText);
                 }
@@ -163,10 +180,11 @@ namespace AdornableWpfLib.Utils
 
             List<MetadataReference> MetadataReferences = new List<MetadataReference>();
 
-            // 自身のアセンブリに読み込まれているアセンブリは追加コードでも対象にする
+            // 自身のアセンブリに読み込まれているアセンブリを参照可能にする
             foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                // 動的生成のアセンブリはパスがないので、ファイルからの追加は対象外とする
+                // 動的生成のアセンブリはパスがないので本処理では追加できない。
+                // 後で追加するのでスキップする。
                 if (string.IsNullOrEmpty(assembly.Location) != true)
                 {
                     MetadataReferences.Add(MetadataReference.CreateFromFile(assembly.Location));
@@ -183,9 +201,8 @@ namespace AdornableWpfLib.Utils
                 // MetadataReference.CreateFromFile(string.Format(runtimePath, "WindowsBase")
             }
 
-            // 自動生成のアセンブリの追加
-            // MEMO: 依存するクラスは当然、先に生成・登録しておく必要がある。
-            //       対象ファイルをまとめてコンパイルする方法も考えられるが、現状は、ソース一本一本を別アセンブリとして管理している。
+            // 動的生成のアセンブリを参照可能にする
+            // MEMO: 依存するクラスは、先に生成・登録しておく必要がある。
             foreach (AssemblyCacheEntry _assemblyCacheEntry in assemblyCache.Values)
             {
                 // 自身は対象外
@@ -207,7 +224,7 @@ namespace AdornableWpfLib.Utils
             cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
 #endif
 
-            string assemblyName = $"{Regex.Replace(path, @"[\\:\.]", "-")}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
+            string assemblyName = $"{Regex.Replace(path, @"[\\:\.\*\?]", "-")}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
 
             CSharpCompilation compilation = CSharpCompilation.Create(
                 $"{assemblyName}.dll",
