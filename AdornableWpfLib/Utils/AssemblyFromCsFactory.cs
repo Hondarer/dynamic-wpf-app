@@ -95,7 +95,7 @@ namespace AdornableWpfLib.Utils
             return null;
         }
 
-        public Assembly GetAssembly(string path)
+        public Assembly CreateOrGetAssembly(string path)
         {
             string directoryName;
             string fileName;
@@ -103,8 +103,8 @@ namespace AdornableWpfLib.Utils
             if (path.Contains(@"\") == true)
             {
                 int lastIndex = path.LastIndexOf(@"\");
-                directoryName = Path.GetFullPath(path.Substring(0, lastIndex+1));
-                fileName = path.Substring(lastIndex+1);
+                directoryName = Path.GetFullPath(path.Substring(0, lastIndex + 1));
+                fileName = path.Substring(lastIndex + 1);
             }
             else
             {
@@ -297,7 +297,7 @@ namespace AdornableWpfLib.Utils
         public object GetNewInstance(string assemblyPath, string classFullName, params object[] args)
         {
             // 例外が出る可能性がある
-            Assembly assembly = GetAssembly(assemblyPath);
+            Assembly assembly = CreateOrGetAssembly(assemblyPath);
 
             // 見つからないと type が null になる
             Type type = assembly.GetType(classFullName);
