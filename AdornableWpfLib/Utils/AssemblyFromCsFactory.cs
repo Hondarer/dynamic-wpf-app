@@ -154,7 +154,14 @@ namespace AdornableWpfLib.Utils
 
             foreach (string absolutePath in absolutePaths)
             {
-                assemblyCacheEntry.lastUpdatedDictionary.Add(absolutePath, File.GetLastWriteTimeUtc(absolutePath));
+                if (assemblyCacheEntry.lastUpdatedDictionary.ContainsKey(absolutePath) == true)
+                {
+                    assemblyCacheEntry.lastUpdatedDictionary[absolutePath] = File.GetLastWriteTimeUtc(absolutePath);
+                }
+                else
+                {
+                    assemblyCacheEntry.lastUpdatedDictionary.Add(absolutePath, File.GetLastWriteTimeUtc(absolutePath));
+                }
             }
 
             Debug.Print("Start compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
@@ -169,18 +176,27 @@ namespace AdornableWpfLib.Utils
 
             foreach (string absolutePath in absolutePaths)
             {
-                using (FileStream sourceStream = new FileStream(absolutePath, FileMode.Open))
+                using (StreamReader sr = new StreamReader(absolutePath))
                 {
-                    // TODO: このあたりで #r を解決する。このあと読み込み済みアセンブリを探索するのでLoadしておけばよい。
+                    // #r を解決する。このあと読み込み済みアセンブリを探索するのでLoadしておけばよい。
 
-                    //Regex regex = new Regex("^\\s*?#r\\s+\"(?<assemblyString>.*?)\"\\s*?$", RegexOptions.Multiline);
-                    //string input = "#r \"System.Text.Json\"\r\n#r \"System.Text.Json2\"\r\neof";
-                    //string replace = "";
-                    //MatchCollection matchCollection = regex.Matches(input);
-                    //Debug.WriteLine($"置換前:{input}");
-                    //Debug.WriteLine($"置換後:{regex.Replace(input, replace)}");
+                    string text = sr.ReadToEnd();
 
-                    SourceText sourceText = SourceText.From(sourceStream, canBeEmbedded: true);
+                    Regex regex = new Regex("^\\s*?#r\\s+\"(?<assemblyString>.*?)\"\\s*?$", RegexOptions.Multiline);
+                    MatchCollection matchCollection = regex.Matches(text);
+                    if (matchCollection.Count > 0)
+                    {
+                        text = regex.Replace(text, "");
+
+                        foreach (Match match in matchCollection)
+                        {
+                            // TODO: 例外の適切な処理
+                            Assembly.Load(match.Groups["assemblyString"].Value);
+                        }
+                    }
+
+                    byte[] buffer = Encoding.GetEncoding("utf-8").GetBytes(text);
+                    SourceText sourceText = SourceText.From(buffer, buffer.Count(), canBeEmbedded: true);
                     syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText, parseOptions));
 
                     sourceTextDictionary.Add(absolutePath, sourceText);

@@ -1,4 +1,6 @@
-﻿using System.Collections.ObjectModel;
+﻿#r "System.Text.Json"
+
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 
