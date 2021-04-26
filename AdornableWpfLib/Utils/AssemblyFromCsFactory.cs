@@ -171,6 +171,15 @@ namespace AdornableWpfLib.Utils
             {
                 using (FileStream sourceStream = new FileStream(absolutePath, FileMode.Open))
                 {
+                    // TODO: このあたりで #r を解決する。このあと読み込み済みアセンブリを探索するのでLoadしておけばよい。
+
+                    //Regex regex = new Regex("^\\s*?#r\\s+\"(?<assemblyString>.*?)\"\\s*?$", RegexOptions.Multiline);
+                    //string input = "#r \"System.Text.Json\"\r\n#r \"System.Text.Json2\"\r\neof";
+                    //string replace = "";
+                    //MatchCollection matchCollection = regex.Matches(input);
+                    //Debug.WriteLine($"置換前:{input}");
+                    //Debug.WriteLine($"置換後:{regex.Replace(input, replace)}");
+
                     SourceText sourceText = SourceText.From(sourceStream, canBeEmbedded: true);
                     syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText, parseOptions));
 

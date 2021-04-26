@@ -7,5 +7,11 @@
         <Button x:Name="button" Content="TEST" />
         <TextBlock x:Name="textBlock" />
         <TextBlock Text="{Binding TextContent}" />
+        <DataGrid ItemsSource="{Binding GridViewModel}" AutoGenerateColumns="False" CanUserAddRows="False">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="IntValue" Binding="{Binding IntValue}" />
+                <DataGridTextColumn Header="StringValue" Binding="{Binding StringValue}" />
+            </DataGrid.Columns>
+        </DataGrid>
     </StackPanel>
 </Grid>
