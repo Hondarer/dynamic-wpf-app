@@ -6,11 +6,11 @@
     <StackPanel>
         <Button x:Name="button" Content="TEST" />
         <TextBlock x:Name="textBlock" />
-        <TextBlock Text="{Binding TextContent}" />
-        <DataGrid ItemsSource="{Binding GridViewModel}" AutoGenerateColumns="False" CanUserAddRows="False">
+        <TextBlock Text="{Binding RecordData1.Text}" />
+        <DataGrid ItemsSource="{Binding RecordsData2}" AutoGenerateColumns="False" CanUserAddRows="False">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="IntValue" Binding="{Binding IntValue}" />
-                <DataGridTextColumn Header="StringValue" Binding="{Binding StringValue}" />
+                <DataGridTextColumn Header="IntData" Binding="{Binding IntData}" />
+                <DataGridTextColumn Header="StringData" Binding="{Binding StringData}" />
             </DataGrid.Columns>
         </DataGrid>
     </StackPanel>

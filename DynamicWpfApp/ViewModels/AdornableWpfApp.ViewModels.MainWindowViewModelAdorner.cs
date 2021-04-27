@@ -6,18 +6,22 @@ using System.Text.Json;
 
 namespace AdornableWpfApp.ViewModels
 {
+    public class RecordData1 : BindableBase
+    {
+        public string Text { get; set; }
+    }
+
+    public class RecordData2 : BindableBase
+    {
+        public int IntData { get; set; }
+
+        public string StringData { get; set; }
+    }
+
     public class MainWindowViewModelAdorner : MainWindowViewModel
     {
-        public string TextContent { get; set; } = "TEXTCONTENT";
-
-        public class RecordViewModel : BindableBase
-        {
-            public int IntValue { get; set; }
-
-            public string StringValue { get; set; }
-        }
-
-        public ObservableCollection<RecordViewModel> GridViewModel { get; }
+        public RecordData1 RecordData1 { get; }
+        public ObservableCollection<RecordData2> RecordsData2 { get; }
 
         public MainWindowViewModelAdorner()
         {
@@ -27,9 +31,14 @@ namespace AdornableWpfApp.ViewModels
                 PropertyNameCaseInsensitive = true,
             };
 
-            using (StreamReader sr = new StreamReader(@"Data\GridViewModel.json"))
+            using (StreamReader sr = new StreamReader(@"Data\RecordData1.json"))
             {
-                GridViewModel = JsonSerializer.Deserialize<ObservableCollection<RecordViewModel>>(sr.ReadToEnd(), options);
+                RecordData1 = JsonSerializer.Deserialize<RecordData1>(sr.ReadToEnd(), options);
+            }
+
+            using (StreamReader sr = new StreamReader(@"Data\RecordsData2.json"))
+            {
+                RecordsData2 = JsonSerializer.Deserialize<ObservableCollection<RecordData2>>(sr.ReadToEnd(), options);
             }
         }
     }

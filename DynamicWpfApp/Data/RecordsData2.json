@@ -1,0 +1,14 @@
+[
+  {
+    "intData": 1,
+    "stringData": "String1"
+  },
+  {
+    "intData": 2,
+    "stringData": "String2"
+  },
+  {
+    "intData": 3,
+    "stringData": "String3"
+  }
+]
