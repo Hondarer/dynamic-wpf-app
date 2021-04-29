@@ -7,21 +7,47 @@ using System.Windows.Markup;
 
 namespace AdornableWpfLib.Utils
 {
+    /// <summary>
+    /// XAML から <see cref="FrameworkElement"/> を返す機能を提供します。
+    /// </summary>
     public class FrameworkElementFromXamlFactory
     {
+        /// <summary>
+        /// <see cref="FrameworkElement"/> のキャッシュ情報を表します。
+        /// </summary>
         private class FrameworkElementCacheEntry
         {
+            /// <summary>
+            /// <see cref="FrameworkElement"/> を保持します。
+            /// </summary>
             public FrameworkElement frameworkElement;
+
+            /// <summary>
+            /// 世代を保持します。
+            /// </summary>
             public int generation = 0;
+
+            /// <summary>
+            /// XAML の最終更新日時を保持します。
+            /// </summary>
             public DateTime lastUpdated;
         }
 
-        private readonly Dictionary<string, FrameworkElementCacheEntry> frameworkElementCache = new Dictionary<string, FrameworkElementCacheEntry>();
+        #region シングルトン デザイン パターン
 
+        /// <summary>
+        /// シングルトン デザイン パターンのためのロックオブジェクトを保持します。
+        /// </summary>
         private static readonly object lockObject = new object();
 
+        /// <summary>
+        /// <see cref="FrameworkElementFromXamlFactory"/> のシングルトンインスタンスを保持します。
+        /// </summary>
         private static FrameworkElementFromXamlFactory instance = null;
 
+        /// <summary>
+        /// <see cref="FrameworkElementFromXamlFactory"/> のシングルトンインスタンスを取得します。
+        /// </summary>
         public static FrameworkElementFromXamlFactory Instance
         {
             get
@@ -41,11 +67,27 @@ namespace AdornableWpfLib.Utils
             }
         }
 
+        /// <summary>
+        /// <see cref="FrameworkElementFromXamlFactory"/> の新しいインスタンスを初期化します。
+        /// </summary>
         private FrameworkElementFromXamlFactory()
         {
         }
 
-        public FrameworkElement GetFrameworkElement(string path)
+        #endregion
+
+        /// <summary>
+        /// <see cref="FrameworkElement"/> のキャッシュを保持します。このフィールドは読み取り専用です。
+        /// </summary>
+        private readonly Dictionary<string, FrameworkElementCacheEntry> frameworkElementCache = new Dictionary<string, FrameworkElementCacheEntry>();
+
+        /// <summary>
+        /// <see cref="FrameworkElement"/> を生成、またはキャッシュから返します。
+        /// </summary>
+        /// <param name="path">XAML のパス。ファイル名にはワイルドカードが利用できます。</param>
+        /// <returns><see cref="FrameworkElement"/>。</returns>
+        /// <exception cref="Exception"><see cref="FrameworkElement"/> 生成に失敗した場合にスローされます。</exception>
+        public FrameworkElement CreateOrGetFrameworkElement(string path)
         {
             if (File.Exists(path) == false)
             {

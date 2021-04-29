@@ -200,7 +200,7 @@ namespace AdornableWpfLib.Behaviors
 
                 if (File.Exists(xamlPath) == true)
                 {
-                    adornContent = FrameworkElementFromXamlFactory.Instance.GetFrameworkElement(xamlPath);
+                    adornContent = FrameworkElementFromXamlFactory.Instance.CreateOrGetFrameworkElement(xamlPath);
                     adornContent.Name = ADORN_CONTENT_NAME;
                     (AssociatedObject.Content as Panel).Children.Add(adornContent);
                     AssociatedObject.RegisterName(adornContent.Name, adornContent);
