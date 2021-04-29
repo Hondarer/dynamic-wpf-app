@@ -138,16 +138,20 @@ namespace AdornableWpfLib.Utils
             // FileNotFoundException が発生してしまうため、カスタム解決処理を組み入れる。
 
             // 動的生成されたアセンブリの要求であれば、このクラスからアセンブリを返す。
-            foreach (AssemblyCacheEntry assemblyCacheEntry in instance.assemblyCache.Values)
+            lock (Instance)
             {
-                if (assemblyCacheEntry.assembly == null)
+                foreach (AssemblyCacheEntry assemblyCacheEntry in instance.assemblyCache.Values)
                 {
-                    continue;
-                }
+                    // アセンブリ生成中に #r で アセンブリを Load しようとすると、ここに到達する。
+                    if (assemblyCacheEntry.assembly == null)
+                    {
+                        continue;
+                    }
 
-                if (assemblyCacheEntry.assembly.FullName == args.Name)
-                {
-                    return assemblyCacheEntry.assembly;
+                    if (assemblyCacheEntry.assembly.FullName == args.Name)
+                    {
+                        return assemblyCacheEntry.assembly;
+                    }
                 }
             }
 
@@ -188,219 +192,222 @@ namespace AdornableWpfLib.Utils
 
             AssemblyCacheEntry assemblyCacheEntry;
 
-            // 初回か、2 回目以降かを判定する。
-            if (assemblyCache.ContainsKey(path) == true)
+            lock (this)
             {
-                assemblyCacheEntry = assemblyCache[path];
-
-                // 対象ソースファイルのうち、いずれか 1 つでも新しくなっていた場合は、アセンブリ再生成対象とする。
-                bool containUpdated = false;
-                foreach (string absolutePath in absolutePaths)
+                // 初回か、2 回目以降かを判定する。
+                if (assemblyCache.ContainsKey(path) == true)
                 {
-                    DateTime lastWriteTime = File.GetLastWriteTimeUtc(absolutePath);
-                    if (assemblyCacheEntry.lastUpdatedDictionary[absolutePath] < lastWriteTime)
+                    assemblyCacheEntry = assemblyCache[path];
+
+                    // 対象ソースファイルのうち、いずれか 1 つでも新しくなっていた場合は、アセンブリ再生成対象とする。
+                    bool containUpdated = false;
+                    foreach (string absolutePath in absolutePaths)
                     {
-                        containUpdated = true;
-                        break;
-                    }
-                }
-
-                // 更新が無かった場合は、生成性しない。
-                // MEMO: このクラス内での生成順を見て、他のアセンブリを再生成したほうがよい場合もあるが、現在のところは行っていない。
-                if (containUpdated == false)
-                {
-                    Debug.Print("Latest {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
-                    return assemblyCacheEntry.assembly;
-                }
-
-                assemblyCacheEntry.generation++;
-
-                // この時点で assemblyCacheEntry.assembly が非 null の場合は、可能ならば解放したいが、
-                // .NET FW では技術的に困難なため、解放はせずに入れ替える。
-                assemblyCacheEntry.assembly = null;
-            }
-            else
-            {
-                assemblyCacheEntry = new AssemblyCacheEntry();
-            }
-
-            // 各ソースファイルの最終更新日時を保持する。
-            foreach (string absolutePath in absolutePaths)
-            {
-                if (assemblyCacheEntry.lastUpdatedDictionary.ContainsKey(absolutePath) == true)
-                {
-                    assemblyCacheEntry.lastUpdatedDictionary[absolutePath] = File.GetLastWriteTimeUtc(absolutePath);
-                }
-                else
-                {
-                    assemblyCacheEntry.lastUpdatedDictionary.Add(absolutePath, File.GetLastWriteTimeUtc(absolutePath));
-                }
-            }
-
-            Debug.Print("Start compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
-
-            Dictionary<string, SourceText> sourceTextDictionary = new Dictionary<string, SourceText>();
-            List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
-
-            CSharpParseOptions parseOptions = new CSharpParseOptions();
-#if DEBUG
-            parseOptions = parseOptions.WithPreprocessorSymbols(CSharpCommandLineParser.ParseConditionalCompilationSymbols("DEBUG;TRACE", out IEnumerable<Diagnostic> diagnostics));
-#endif
-
-            foreach (string absolutePath in absolutePaths)
-            {
-                using (StreamReader sr = new StreamReader(absolutePath))
-                {
-                    // #r を解決する。このあと読み込み済みアセンブリを探索するので Load しておけばよい。
-
-                    string text = sr.ReadToEnd();
-
-                    Regex regex = new Regex("^\\s*?#r\\s+\"(?<assemblyString>.*?)\"\\s*?$", RegexOptions.Multiline);
-                    MatchCollection matchCollection = regex.Matches(text);
-                    if (matchCollection.Count > 0)
-                    {
-                        text = regex.Replace(text, "");
-
-                        foreach (Match match in matchCollection)
+                        DateTime lastWriteTime = File.GetLastWriteTimeUtc(absolutePath);
+                        if (assemblyCacheEntry.lastUpdatedDictionary[absolutePath] < lastWriteTime)
                         {
-                            try
-                            {
-                                Assembly.Load(match.Groups["assemblyString"].Value);
-                            }
-                            catch (Exception ex)
-                            {
-                                StringBuilder sb = new StringBuilder();
-
-                                sb.AppendLine($"Unable load assembly '{match.Groups["assemblyString"].Value}' in {absolutePath}.");
-                                sb.AppendLine(ex.ToString());
-
-                                throw new Exception(sb.ToString());
-                            }
+                            containUpdated = true;
+                            break;
                         }
                     }
 
-                    // SourceText と CSharpSyntaxTree を得る。
-                    byte[] buffer = Encoding.GetEncoding("utf-8").GetBytes(text);
-                    SourceText sourceText = SourceText.From(buffer, buffer.Count(), canBeEmbedded: true);
-                    syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText, parseOptions));
+                    // 更新が無かった場合は、生成性しない。
+                    // MEMO: このクラス内での生成順を見て、他のアセンブリを再生成したほうがよい場合もあるが、現在のところは行っていない。
+                    if (containUpdated == false)
+                    {
+                        Debug.Print("Latest {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
+                        return assemblyCacheEntry.assembly;
+                    }
 
-                    sourceTextDictionary.Add(absolutePath, sourceText);
+                    assemblyCacheEntry.generation++;
+
+                    // この時点で assemblyCacheEntry.assembly が非 null の場合は、可能ならば解放したいが、
+                    // .NET FW では技術的に困難なため、解放はせずに入れ替える。
+                    assemblyCacheEntry.assembly = null;
                 }
-            }
-
-            // アセンブリ参照の処理
-            List<MetadataReference> MetadataReferences = new List<MetadataReference>();
-
-            // 自身のアセンブリに読み込まれているアセンブリを参照可能にする
-            foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                // 動的生成のアセンブリはパスがないので本処理では追加できない。
-                // 後で追加するのでスキップする。
-                if (string.IsNullOrEmpty(assembly.Location) != true)
+                else
                 {
-                    MetadataReferences.Add(MetadataReference.CreateFromFile(assembly.Location));
+                    assemblyCacheEntry = new AssemblyCacheEntry();
                 }
 
-                // その他の追加方法例
-                //
-                // 型から
-                // MetadataReference.CreateFromFile(typeof(object).Assembly.Location)
-                //
-                // パスから
-                // string runtimePath
-                //     = @"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\{0}.dll";
-                // MetadataReference.CreateFromFile(string.Format(runtimePath, "WindowsBase")
-            }
-
-            // 動的生成のアセンブリを参照可能にする
-            // MEMO: 依存するクラスは、先に生成・登録しておく必要がある。
-            foreach (AssemblyCacheEntry _assemblyCacheEntry in assemblyCache.Values)
-            {
-                // 自身は対象外
-                if (_assemblyCacheEntry.Equals(assemblyCacheEntry))
+                // 各ソースファイルの最終更新日時を保持する。
+                foreach (string absolutePath in absolutePaths)
                 {
-                    continue;
+                    if (assemblyCacheEntry.lastUpdatedDictionary.ContainsKey(absolutePath) == true)
+                    {
+                        assemblyCacheEntry.lastUpdatedDictionary[absolutePath] = File.GetLastWriteTimeUtc(absolutePath);
+                    }
+                    else
+                    {
+                        assemblyCacheEntry.lastUpdatedDictionary.Add(absolutePath, File.GetLastWriteTimeUtc(absolutePath));
+                    }
                 }
 
-                MetadataReferences.Add(_assemblyCacheEntry.metadataReference);
-            }
+                Debug.Print("Start compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
 
-            MetadataReference[] references = MetadataReferences.ToArray();
+                Dictionary<string, SourceText> sourceTextDictionary = new Dictionary<string, SourceText>();
+                List<SyntaxTree> syntaxTrees = new List<SyntaxTree>();
 
-            // analyse and generate IL code from syntax tree
-            CSharpCompilationOptions cSharpCompilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+                CSharpParseOptions parseOptions = new CSharpParseOptions();
 #if DEBUG
-            cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Debug);
+                parseOptions = parseOptions.WithPreprocessorSymbols(CSharpCommandLineParser.ParseConditionalCompilationSymbols("DEBUG;TRACE", out IEnumerable<Diagnostic> diagnostics));
+#endif
+
+                foreach (string absolutePath in absolutePaths)
+                {
+                    using (StreamReader sr = new StreamReader(absolutePath))
+                    {
+                        // #r を解決する。このあと読み込み済みアセンブリを探索するので Load しておけばよい。
+
+                        string text = sr.ReadToEnd();
+
+                        Regex regex = new Regex("^\\s*?#r\\s+\"(?<assemblyString>.*?)\"\\s*?$", RegexOptions.Multiline);
+                        MatchCollection matchCollection = regex.Matches(text);
+                        if (matchCollection.Count > 0)
+                        {
+                            text = regex.Replace(text, "");
+
+                            foreach (Match match in matchCollection)
+                            {
+                                try
+                                {
+                                    Assembly.Load(match.Groups["assemblyString"].Value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    StringBuilder sb = new StringBuilder();
+
+                                    sb.AppendLine($"Unable load assembly '{match.Groups["assemblyString"].Value}' in {absolutePath}.");
+                                    sb.AppendLine(ex.ToString());
+
+                                    throw new Exception(sb.ToString());
+                                }
+                            }
+                        }
+
+                        // SourceText と CSharpSyntaxTree を得る。
+                        byte[] buffer = Encoding.GetEncoding("utf-8").GetBytes(text);
+                        SourceText sourceText = SourceText.From(buffer, buffer.Count(), canBeEmbedded: true);
+                        syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText, parseOptions));
+
+                        sourceTextDictionary.Add(absolutePath, sourceText);
+                    }
+                }
+
+                // アセンブリ参照の処理
+                List<MetadataReference> MetadataReferences = new List<MetadataReference>();
+
+                // 自身のアセンブリに読み込まれているアセンブリを参照可能にする
+                foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    // 動的生成のアセンブリはパスがないので本処理では追加できない。
+                    // 後で追加するのでスキップする。
+                    if (string.IsNullOrEmpty(assembly.Location) != true)
+                    {
+                        MetadataReferences.Add(MetadataReference.CreateFromFile(assembly.Location));
+                    }
+
+                    // その他の追加方法例
+                    //
+                    // 型から
+                    // MetadataReference.CreateFromFile(typeof(object).Assembly.Location)
+                    //
+                    // パスから
+                    // string runtimePath
+                    //     = @"C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\{0}.dll";
+                    // MetadataReference.CreateFromFile(string.Format(runtimePath, "WindowsBase")
+                }
+
+                // 動的生成のアセンブリを参照可能にする
+                // MEMO: 依存するクラスは、先に生成・登録しておく必要がある。
+                foreach (AssemblyCacheEntry _assemblyCacheEntry in assemblyCache.Values)
+                {
+                    // 自身は対象外
+                    if (_assemblyCacheEntry.Equals(assemblyCacheEntry))
+                    {
+                        continue;
+                    }
+
+                    MetadataReferences.Add(_assemblyCacheEntry.metadataReference);
+                }
+
+                MetadataReference[] references = MetadataReferences.ToArray();
+
+                // analyse and generate IL code from syntax tree
+                CSharpCompilationOptions cSharpCompilationOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary);
+#if DEBUG
+                cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Debug);
 #else
             cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
 #endif
 
-            string assemblyName = $"{Regex.Replace(path, @"[\\:\.\*\?]", "-")}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
+                string assemblyName = $"{Regex.Replace(path, @"[\\:\.\*\?]", "-")}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
 
-            CSharpCompilation compilation = CSharpCompilation.Create(
-                $"{assemblyName}.dll",
-                syntaxTrees: syntaxTrees,
-                references: references,
-                options: cSharpCompilationOptions);
+                CSharpCompilation compilation = CSharpCompilation.Create(
+                    $"{assemblyName}.dll",
+                    syntaxTrees: syntaxTrees,
+                    references: references,
+                    options: cSharpCompilationOptions);
 
-            using (MemoryStream assemblyStream = new MemoryStream())
-            using (MemoryStream symbolsStream = new MemoryStream())
-            {
-                EmitOptions emitOptions = new EmitOptions(
-                    debugInformationFormat: DebugInformationFormat.PortablePdb,
-                    pdbFilePath: $"{assemblyName}.pdb");
-
-                List<EmbeddedText> embeddedTexts = new List<EmbeddedText>();
-                foreach (string absolutePath in absolutePaths)
+                using (MemoryStream assemblyStream = new MemoryStream())
+                using (MemoryStream symbolsStream = new MemoryStream())
                 {
-                    embeddedTexts.Add(EmbeddedText.FromSource(absolutePath, sourceTextDictionary[absolutePath]));
-                }
+                    EmitOptions emitOptions = new EmitOptions(
+                        debugInformationFormat: DebugInformationFormat.PortablePdb,
+                        pdbFilePath: $"{assemblyName}.pdb");
 
-                EmitResult result = compilation.Emit(
-                    peStream: assemblyStream,
-                    pdbStream: symbolsStream,
-                    embeddedTexts: embeddedTexts,
-                    options: emitOptions);
-
-                if (result.Success == false)
-                {
-                    // handle exceptions
-                    IEnumerable<Diagnostic> failures = result.Diagnostics.Where(diagnostic =>
-                        diagnostic.IsWarningAsError ||
-                        diagnostic.Severity == DiagnosticSeverity.Error);
-
-                    StringBuilder sb = new StringBuilder();
-
-                    sb.AppendLine($"Compilation error(s) has occurred in {path}.");
-                    foreach (Diagnostic diagnostic in failures)
+                    List<EmbeddedText> embeddedTexts = new List<EmbeddedText>();
+                    foreach (string absolutePath in absolutePaths)
                     {
-                        sb.AppendLine(diagnostic.ToString());
+                        embeddedTexts.Add(EmbeddedText.FromSource(absolutePath, sourceTextDictionary[absolutePath]));
                     }
 
-                    throw new Exception(sb.ToString());
-                }
-                else
-                {
-                    assemblyStream.Seek(0, SeekOrigin.Begin);
-                    symbolsStream.Seek(0, SeekOrigin.Begin);
+                    EmitResult result = compilation.Emit(
+                        peStream: assemblyStream,
+                        pdbStream: symbolsStream,
+                        embeddedTexts: embeddedTexts,
+                        options: emitOptions);
 
-                    assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray());
-
-                    if (assemblyCache.ContainsValue(assemblyCacheEntry) == false)
+                    if (result.Success == false)
                     {
-                        assemblyCache.Add(path, assemblyCacheEntry);
+                        // handle exceptions
+                        IEnumerable<Diagnostic> failures = result.Diagnostics.Where(diagnostic =>
+                            diagnostic.IsWarningAsError ||
+                            diagnostic.Severity == DiagnosticSeverity.Error);
+
+                        StringBuilder sb = new StringBuilder();
+
+                        sb.AppendLine($"Compilation error(s) has occurred in {path}.");
+                        foreach (Diagnostic diagnostic in failures)
+                        {
+                            sb.AppendLine(diagnostic.ToString());
+                        }
+
+                        throw new Exception(sb.ToString());
                     }
+                    else
+                    {
+                        assemblyStream.Seek(0, SeekOrigin.Begin);
+                        symbolsStream.Seek(0, SeekOrigin.Begin);
 
-                    assemblyStream.Seek(0, SeekOrigin.Begin);
+                        assemblyCacheEntry.assembly = Assembly.Load(assemblyStream.ToArray(), symbolsStream.ToArray());
 
-                    // MetadataReference の生成はイメージから行うべきなので、このタイミングで保持しておく。
-                    // (Assembly から生成する方法は Obsolete になっている。)
-                    assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(assemblyStream);
+                        if (assemblyCache.ContainsValue(assemblyCacheEntry) == false)
+                        {
+                            assemblyCache.Add(path, assemblyCacheEntry);
+                        }
+
+                        assemblyStream.Seek(0, SeekOrigin.Begin);
+
+                        // MetadataReference の生成はイメージから行うべきなので、このタイミングで保持しておく。
+                        // (Assembly から生成する方法は Obsolete になっている。)
+                        assemblyCacheEntry.metadataReference = MetadataReference.CreateFromStream(assemblyStream);
+                    }
                 }
+
+                assemblyCacheEntry.lastBuilt = DateTime.UtcNow;
+                Debug.Print("Done compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
             }
-
-            assemblyCacheEntry.lastBuilt = DateTime.UtcNow;
-            Debug.Print("Done compile {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
 
             return assemblyCacheEntry.assembly;
         }

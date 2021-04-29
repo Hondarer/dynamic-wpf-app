@@ -36,11 +36,6 @@ namespace AdornableWpfLib.Utils
         #region シングルトン デザイン パターン
 
         /// <summary>
-        /// シングルトン デザイン パターンのためのロックオブジェクトを保持します。
-        /// </summary>
-        private static readonly object lockObject = new object();
-
-        /// <summary>
         /// <see cref="FrameworkElementFromXamlFactory"/> のシングルトンインスタンスを保持します。
         /// </summary>
         private static FrameworkElementFromXamlFactory instance = null;
@@ -54,13 +49,8 @@ namespace AdornableWpfLib.Utils
             {
                 if (instance == null)
                 {
-                    lock (lockObject)
-                    {
-                        if (instance == null)
-                        {
-                            instance = new FrameworkElementFromXamlFactory();
-                        }
-                    }
+                    // MEMO: 本クラスは UI スレッド向けのため、マルチスレッドの考慮は不要。
+                    instance = new FrameworkElementFromXamlFactory();
                 }
 
                 return instance;
@@ -97,6 +87,8 @@ namespace AdornableWpfLib.Utils
             string absolutePath = Path.GetFullPath(path);
 
             FrameworkElementCacheEntry frameworkElementCacheEntry;
+
+            // MEMO: 本クラスは UI スレッド向けのため、マルチスレッドの考慮は不要。
 
             if (frameworkElementCache.ContainsKey(absolutePath) == true)
             {
