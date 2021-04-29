@@ -338,7 +338,7 @@ namespace AdornableWpfLib.Utils
 #if DEBUG
                 cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Debug);
 #else
-            cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
+                cSharpCompilationOptions = cSharpCompilationOptions.WithOptimizationLevel(OptimizationLevel.Release);
 #endif
 
                 string assemblyName = $"{Regex.Replace(path, @"[\\:\.\*\?]", "-")}_{assemblyCacheEntry.guid}_{assemblyCacheEntry.generation}";
