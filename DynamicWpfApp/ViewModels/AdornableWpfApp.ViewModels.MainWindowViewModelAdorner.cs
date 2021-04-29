@@ -28,7 +28,7 @@ namespace AdornableWpfApp.ViewModels
             JsonSerializerOptions options = new JsonSerializerOptions
             {
                 // 大文字と小文字を区別しないプロパティ名の照合を有効にする
-                PropertyNameCaseInsensitive = true,
+                PropertyNameCaseInsensitive = true
             };
 
             using (StreamReader sr = new StreamReader(@"Data\RecordData1.json"))

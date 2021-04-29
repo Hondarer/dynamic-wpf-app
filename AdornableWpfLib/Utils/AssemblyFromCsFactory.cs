@@ -13,17 +13,47 @@ using System.Text.RegularExpressions;
 
 namespace AdornableWpfLib.Utils
 {
+    /// <summary>
+    /// ソースファイルからアセンブリを返す機能を提供します。
+    /// </summary>
     public class AssemblyFromCsFactory
     {
+        /// <summary>
+        /// アセンブリのキャッシュ情報を表します。
+        /// </summary>
         private class AssemblyCacheEntry
         {
-            public Guid guid = Guid.NewGuid();
+            /// <summary>
+            /// このキャッシュ情報の ID を保持します。このフィールドは読み取り専用です。
+            /// </summary>
+            public readonly Guid guid = Guid.NewGuid();
+
+            /// <summary>
+            /// アセンブリを保持します。
+            /// </summary>
             public Assembly assembly;
+
+            /// <summary>
+            /// 世代を保持します。
+            /// </summary>
             public int generation = 0;
+
+            /// <summary>
+            /// 各ソースファイルの最終更新日時を保持します。
+            /// </summary>
             public Dictionary<string, DateTime> lastUpdatedDictionary = new Dictionary<string, DateTime>();
+
+            /// <summary>
+            /// 最終ビルド日時を保持します。
+            /// </summary>
             public DateTime lastBuilt;
+
+            /// <summary>
+            /// <see cref="MetadataReference"/> を保持します。
+            /// </summary>
             public MetadataReference metadataReference;
 
+            /// <inheritdoc/>
             public override bool Equals(object obj)
             {
                 if (obj == null)
@@ -39,18 +69,28 @@ namespace AdornableWpfLib.Utils
                 return guid == (obj as AssemblyCacheEntry).guid;
             }
 
+            /// <inheritdoc/>
             public override int GetHashCode()
             {
                 return guid.GetHashCode();
             }
         }
 
-        private readonly Dictionary<string, AssemblyCacheEntry> assemblyCache = new Dictionary<string, AssemblyCacheEntry>();
+        #region シングルトン デザイン パターン
 
+        /// <summary>
+        /// シングルトン デザイン パターンのためのロックオブジェクトを保持します。
+        /// </summary>
         private static readonly object lockObject = new object();
 
+        /// <summary>
+        /// <see cref="AssemblyFromCsFactory"/> のシングルトンインスタンスを保持します。
+        /// </summary>
         private static AssemblyFromCsFactory instance = null;
 
+        /// <summary>
+        /// <see cref="AssemblyFromCsFactory"/> のシングルトンインスタンスを取得します。
+        /// </summary>
         public static AssemblyFromCsFactory Instance
         {
             get
@@ -66,16 +106,31 @@ namespace AdornableWpfLib.Utils
                     }
                 }
 
-                AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
-
                 return instance;
             }
         }
 
+        #endregion
+
+        /// <summary>
+        /// アセンブリのキャッシュを保持します。このフィールドは読み取り専用です。
+        /// </summary>
+        private readonly Dictionary<string, AssemblyCacheEntry> assemblyCache = new Dictionary<string, AssemblyCacheEntry>();
+
+        /// <summary>
+        /// <see cref="AssemblyFromCsFactory"/> の新しいインスタンスを初期化します。
+        /// </summary>
         private AssemblyFromCsFactory()
         {
+            AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
         }
 
+        /// <summary>
+        /// アセンブリを解決します。
+        /// </summary>
+        /// <param name="sender">The source of the event.</param>
+        /// <param name="args">The event data.</param>
+        /// <returns>The assembly that resolves the type, assembly, or resource; or null if the assembly cannot be resolved.</returns>
         private static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
         {
             // 既定のアセンブリ解決処理で
@@ -85,6 +140,11 @@ namespace AdornableWpfLib.Utils
             // 動的生成されたアセンブリの要求であれば、このクラスからアセンブリを返す。
             foreach (AssemblyCacheEntry assemblyCacheEntry in instance.assemblyCache.Values)
             {
+                if (assemblyCacheEntry.assembly == null)
+                {
+                    continue;
+                }
+
                 if (assemblyCacheEntry.assembly.FullName == args.Name)
                 {
                     return assemblyCacheEntry.assembly;
@@ -95,11 +155,18 @@ namespace AdornableWpfLib.Utils
             return null;
         }
 
+        /// <summary>
+        /// アセンブリを生成、またはキャッシュから返します。
+        /// </summary>
+        /// <param name="path">ソースファイルのパス。ファイル名にはワイルドカードが利用できます。</param>
+        /// <returns>アセンブリ。</returns>
+        /// <exception cref="Exception">アセンブリ生成に失敗した場合にスローされます。</exception>
         public Assembly CreateOrGetAssembly(string path)
         {
             string directoryName;
             string fileName;
 
+            // ? や * が含まれている場合には Path クラスの処理ができないので、自前で分解する。
             if (path.Contains(@"\") == true)
             {
                 int lastIndex = path.LastIndexOf(@"\");
@@ -112,6 +179,7 @@ namespace AdornableWpfLib.Utils
                 fileName = path;
             }
 
+            // 対象のソースファイル群に展開
             List<string> absolutePaths = Directory.GetFiles(directoryName, fileName).ToList();
             if (absolutePaths.Count == 0)
             {
@@ -120,10 +188,12 @@ namespace AdornableWpfLib.Utils
 
             AssemblyCacheEntry assemblyCacheEntry;
 
+            // 初回か、2 回目以降かを判定する。
             if (assemblyCache.ContainsKey(path) == true)
             {
                 assemblyCacheEntry = assemblyCache[path];
 
+                // 対象ソースファイルのうち、いずれか 1 つでも新しくなっていた場合は、アセンブリ再生成対象とする。
                 bool containUpdated = false;
                 foreach (string absolutePath in absolutePaths)
                 {
@@ -135,6 +205,8 @@ namespace AdornableWpfLib.Utils
                     }
                 }
 
+                // 更新が無かった場合は、生成性しない。
+                // MEMO: このクラス内での生成順を見て、他のアセンブリを再生成したほうがよい場合もあるが、現在のところは行っていない。
                 if (containUpdated == false)
                 {
                     Debug.Print("Latest {0} updated at {1}, generation={2}", path, assemblyCacheEntry.lastBuilt.ToLocalTime(), assemblyCacheEntry.generation);
@@ -152,6 +224,7 @@ namespace AdornableWpfLib.Utils
                 assemblyCacheEntry = new AssemblyCacheEntry();
             }
 
+            // 各ソースファイルの最終更新日時を保持する。
             foreach (string absolutePath in absolutePaths)
             {
                 if (assemblyCacheEntry.lastUpdatedDictionary.ContainsKey(absolutePath) == true)
@@ -190,11 +263,23 @@ namespace AdornableWpfLib.Utils
 
                         foreach (Match match in matchCollection)
                         {
-                            // TODO: 例外の適切な処理
-                            Assembly.Load(match.Groups["assemblyString"].Value);
+                            try
+                            {
+                                Assembly.Load(match.Groups["assemblyString"].Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                StringBuilder sb = new StringBuilder();
+
+                                sb.AppendLine($"Unable load assembly '{match.Groups["assemblyString"].Value}' in {absolutePath}.");
+                                sb.AppendLine(ex.ToString());
+
+                                throw new Exception(sb.ToString());
+                            }
                         }
                     }
 
+                    // SourceText と CSharpSyntaxTree を得る。
                     byte[] buffer = Encoding.GetEncoding("utf-8").GetBytes(text);
                     SourceText sourceText = SourceText.From(buffer, buffer.Count(), canBeEmbedded: true);
                     syntaxTrees.Add(CSharpSyntaxTree.ParseText(sourceText, parseOptions));
@@ -203,6 +288,7 @@ namespace AdornableWpfLib.Utils
                 }
             }
 
+            // アセンブリ参照の処理
             List<MetadataReference> MetadataReferences = new List<MetadataReference>();
 
             // 自身のアセンブリに読み込まれているアセンブリを参照可能にする
@@ -319,9 +405,16 @@ namespace AdornableWpfLib.Utils
             return assemblyCacheEntry.assembly;
         }
 
+        /// <summary>
+        /// 新しいインスタンスを取得します。
+        /// </summary>
+        /// <param name="assemblyPath">アセンブリのパス。</param>
+        /// <param name="classFullName">クラスの名称。</param>
+        /// <param name="args">コンストラクターの引数。</param>
+        /// <returns>新しいインスタンス。</returns>
+        /// <exception cref="Exception">インスタンス生成に失敗した場合にスローされます。</exception>
         public object GetNewInstance(string assemblyPath, string classFullName, params object[] args)
         {
-            // 例外が出る可能性がある
             Assembly assembly = CreateOrGetAssembly(assemblyPath);
 
             // 見つからないと type が null になる
@@ -331,7 +424,6 @@ namespace AdornableWpfLib.Utils
                 throw new Exception($"Class not found: {classFullName}");
             }
 
-            // 例外が出る可能性がある
             object obj = Activator.CreateInstance(type, args);
 
             return obj;

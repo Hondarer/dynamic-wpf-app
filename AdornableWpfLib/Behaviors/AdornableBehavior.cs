@@ -2,6 +2,7 @@
 using AdornableWpfLib.Utils;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -19,15 +20,21 @@ namespace AdornableWpfLib.Behaviors
     /// </summary>
     public class AdornableBehavior : Behavior<ContentControl>
     {
-        /// <summary>
-        /// 追加のコンテントの更新コマンドの <see cref="InputBinding"/> を保持します。
-        /// </summary>
-        private InputBinding refreshAdornerBinding = null;
+        #region 定数
 
         /// <summary>
         /// 追加のコンテントの名前を表します。
         /// </summary>
         public const string ADORN_CONTENT_NAME = "adornContent";
+
+        #endregion
+
+        #region フィールド
+
+        /// <summary>
+        /// 追加のコンテントの更新コマンドの <see cref="InputBinding"/> を保持します。
+        /// </summary>
+        private InputBinding refreshAdornerBinding = null;
 
         /// <summary>
         /// 追加のコンテントのコードビハインドを保持します。
@@ -59,6 +66,35 @@ namespace AdornableWpfLib.Behaviors
         /// </summary>
         public DelegateCommand RefreshAdornerCommand { get; }
 
+        #endregion
+
+        #region 依存関係プロパティ
+
+        /// <summary>
+        /// BasePath 依存関係プロパティを識別します。このフィールドは読み取り専用です。
+        /// </summary>
+        public static readonly DependencyProperty BasePathProperty = DependencyProperty.Register(nameof(BasePath), typeof(string), typeof(AdornableBehavior), new PropertyMetadata(null, BasePathUpdated));
+
+        /// <summary>
+        /// 追加のコンテントの基準パスを取得または設定します。
+        /// </summary>
+        [Description("追加のコンテントの基準パスを取得または設定します。")]
+        public string BasePath
+        {
+            get 
+            {
+                return (string)GetValue(BasePathProperty); 
+            }
+            set
+            { 
+                SetValue(BasePathProperty, value); 
+            }
+        }
+
+        #endregion
+
+        #region コンストラクター
+
         /// <summary>
         /// <see cref="AdornableBehavior"/> の新しいインスタンスを生成します。
         /// </summary>
@@ -67,9 +103,9 @@ namespace AdornableWpfLib.Behaviors
             RefreshAdornerCommand = new DelegateCommand(RefreshAdorner);
         }
 
-        /// <summary>
-        /// Called after the behavior is attached to an AssociatedObject.
-        /// </summary>
+        #endregion
+
+        /// <inheritdoc/>
         protected override void OnAttached()
         {
             base.OnAttached();
@@ -77,9 +113,7 @@ namespace AdornableWpfLib.Behaviors
             AssociatedObject.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Loaded, (Action)(() => AssociatedObjectLoaded()));
         }
 
-        /// <summary>
-        /// Called when the behavior is being detached from its AssociatedObject.
-        /// </summary>
+        /// <inheritdoc/>
         protected override void OnDetaching()
         {
             if (refreshAdornerBinding != null)
@@ -92,7 +126,7 @@ namespace AdornableWpfLib.Behaviors
         }
 
         /// <summary>
-        /// 関連付けされたオブジェクトの読み込みが完了されたときの処理をします。
+        /// 関連付けされたオブジェクトの読み込みが完了したときの処理をします。
         /// </summary>
         private void AssociatedObjectLoaded()
         {
@@ -100,6 +134,16 @@ namespace AdornableWpfLib.Behaviors
 
             refreshAdornerBinding = new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdornerCommand };
             AssociatedObject.InputBindings.Add(refreshAdornerBinding);
+        }
+
+        /// <summary>
+        /// BasePath が変更になったときの処理をします。
+        /// </summary>
+        /// <param name="dependencyObject">プロパティの値が変更された <see cref="DependencyObject"/>。</param>
+        /// <param name="e">このプロパティの有効値に対する変更を追跡するイベントによって発行されるイベント データ。</param>
+        private static void BasePathUpdated(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs e)
+        {
+            ((AdornableBehavior)dependencyObject).RefreshAdorner();
         }
 
         /// <summary>
@@ -230,28 +274,48 @@ namespace AdornableWpfLib.Behaviors
 
             Match match = Regex.Match(targetFullName, @"^(?<head>.*?)\.(?<folder>[^\.]+)\.(?<class>[^\.]+)$");
 
-            return $@"{match.Groups["folder"].Value}\{match.Groups["head"].Value}.{match.Groups["folder"].Value}.{match.Groups["class"].Value}Adorner.xaml"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml
+            return $@"{BasePath}{match.Groups["folder"].Value}\{match.Groups["head"].Value}.{match.Groups["folder"].Value}.{match.Groups["class"].Value}Adorner.xaml"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml
         }
 
+        /// <summary>
+        /// 追加のコンテントのコードビハインドのパスを返します。
+        /// </summary>
+        /// <param name="target">対象の <see cref="ContentControl"/>。</param>
+        /// <returns>追加のコンテントのコードビハインドのパス。</returns>
         private string GetCodeBehindPath(ContentControl target)
         {
             return $@"{GetAdornerXamlPath(target)}.cs"; // Views\AdornableWpfApp.Views.MainWindowAdorner.xaml.cs
         }
 
+        /// <summary>
+        /// 追加のコンテントのコードビハインドのクラス名を返します。
+        /// </summary>
+        /// <param name="target">対象の <see cref="ContentControl"/>。</param>
+        /// <returns>追加のコンテントのコードビハインドのクラス名。</returns>
         private string GetCodeBehindClassName(ContentControl target)
         {
             return $@"{target.GetType().FullName}Adorner"; // AdornableWpfApp.Views.MainWindowAdorner
         }
 
+        /// <summary>
+        /// 追加のコンテントの ViewModel のパスを返します。
+        /// </summary>
+        /// <param name="target">対象の <see cref="ContentControl"/>。</param>
+        /// <returns>追加のコンテントの ViewModel。</returns>
         private string GetViewModelPath(ContentControl target)
         {
             string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
 
             Match match = Regex.Match(targetFullName, @"^(?<head>.*?)\.(?<folder>[^\.]+)\.(?<class>[^\.]+)$");
 
-            return $@"ViewModels\{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModelAdorner.cs"; // ViewModels\AdornableWpfApp.ViewModels.MainWindowViewModelAdorner.cs
+            return $@"{BasePath}ViewModels\{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModelAdorner.cs"; // ViewModels\AdornableWpfApp.ViewModels.MainWindowViewModelAdorner.cs
         }
 
+        /// <summary>
+        /// コンテントの ViewModel のクラス名を返します。
+        /// </summary>
+        /// <param name="target">対象の <see cref="ContentControl"/>。</param>
+        /// <returns>コンテントの ViewModel のクラス名。</returns>
         private string GetViewModelClassName(ContentControl target)
         {
             string targetFullName = target.GetType().FullName; // AdornableWpfApp.Views.MainWindow
@@ -261,6 +325,11 @@ namespace AdornableWpfLib.Behaviors
             return $@"{match.Groups["head"].Value}.ViewModels.{match.Groups["class"].Value}ViewModel"; // AdornableWpfApp.ViewModels.MainWindowViewModel
         }
 
+        /// <summary>
+        /// 追加のコンテントの ViewModel のクラス名を返します。
+        /// </summary>
+        /// <param name="target">対象の <see cref="ContentControl"/>。</param>
+        /// <returns>追加のコンテントの ViewModel のクラス名。</returns>
         private string GetAdornerViewModelClassName(ContentControl target)
         {
             return $@"{GetViewModelClassName(target)}Adorner"; // AdornableWpfApp.ViewModels.MainWindowViewModelAdorner
