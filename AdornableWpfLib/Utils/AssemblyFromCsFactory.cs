@@ -251,7 +251,7 @@ namespace AdornableWpfLib.Utils
             {
                 using (StreamReader sr = new StreamReader(absolutePath))
                 {
-                    // #r を解決する。このあと読み込み済みアセンブリを探索するのでLoadしておけばよい。
+                    // #r を解決する。このあと読み込み済みアセンブリを探索するので Load しておけばよい。
 
                     string text = sr.ReadToEnd();
 

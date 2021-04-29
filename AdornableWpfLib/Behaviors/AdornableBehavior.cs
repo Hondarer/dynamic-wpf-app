@@ -32,11 +32,6 @@ namespace AdornableWpfLib.Behaviors
         #region フィールド
 
         /// <summary>
-        /// 追加のコンテントの更新コマンドの <see cref="InputBinding"/> を保持します。
-        /// </summary>
-        private InputBinding refreshAdornerBinding = null;
-
-        /// <summary>
         /// 追加のコンテントのコードビハインドを保持します。
         /// </summary>
         private object adornContentCodeBehind = null;
@@ -62,9 +57,14 @@ namespace AdornableWpfLib.Behaviors
         private object adornContentViewModel = null;
 
         /// <summary>
-        /// 追加のコンテントの更新コマンドを保持します。
+        /// 追加のコンテントの更新コマンドの <see cref="InputBinding"/> を保持します。
         /// </summary>
-        public DelegateCommand RefreshAdornerCommand { get; }
+        private InputBinding refreshAdornerBinding = null;
+
+        /// <summary>
+        /// 追加のコンテントの更新コマンドを保持します。このフィールドは読み取り専用です。
+        /// </summary>
+        private readonly DelegateCommand refreshAdornerCommand;
 
         #endregion
 
@@ -100,7 +100,7 @@ namespace AdornableWpfLib.Behaviors
         /// </summary>
         public AdornableBehavior()
         {
-            RefreshAdornerCommand = new DelegateCommand(RefreshAdorner);
+            refreshAdornerCommand = new DelegateCommand(RefreshAdorner);
         }
 
         #endregion
@@ -132,7 +132,7 @@ namespace AdornableWpfLib.Behaviors
         {
             RefreshAdorner();
 
-            refreshAdornerBinding = new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = RefreshAdornerCommand };
+            refreshAdornerBinding = new KeyBinding() { Gesture = new KeyGesture(Key.F5, ModifierKeys.Shift, "Shift+F5"), Command = refreshAdornerCommand };
             AssociatedObject.InputBindings.Add(refreshAdornerBinding);
         }
 

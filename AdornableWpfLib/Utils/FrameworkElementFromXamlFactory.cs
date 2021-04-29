@@ -126,7 +126,7 @@ namespace AdornableWpfLib.Utils
                 {
                     frameworkElementCacheEntry.frameworkElement = XamlReader.Load(srImplXaml.BaseStream) as FrameworkElement;
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     throw new Exception($"Xaml parse error(s) has occurred in {absolutePath}.", ex);
                 }
