@@ -120,7 +120,7 @@ namespace AdornableWpfLib.Utils
                 }
                 catch (Exception ex)
                 {
-                    throw new Exception($"Xaml parse error(s) has occurred in {absolutePath}.", ex);
+                    throw new Exception($"XAML parse error(s) has occurred in {absolutePath}.", ex);
                 }
             }
 
