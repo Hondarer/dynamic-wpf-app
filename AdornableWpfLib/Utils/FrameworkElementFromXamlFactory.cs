@@ -74,7 +74,7 @@ namespace AdornableWpfLib.Utils
         /// <summary>
         /// <see cref="FrameworkElement"/> を生成、またはキャッシュから返します。
         /// </summary>
-        /// <param name="path">XAML のパス。ファイル名にはワイルドカードが利用できます。</param>
+        /// <param name="path">XAML のパス。</param>
         /// <returns><see cref="FrameworkElement"/>。</returns>
         /// <exception cref="Exception"><see cref="FrameworkElement"/> 生成に失敗した場合にスローされます。</exception>
         public FrameworkElement CreateOrGetFrameworkElement(string path)
