@@ -26,6 +26,8 @@ namespace AdornableWpfApp.ViewModels
 
         public MainWindowViewModelAdorner()
         {
+            Title = "AdornableWpfApp";
+
             JsonSerializerOptions options = new JsonSerializerOptions
             {
                 // 大文字と小文字を区別しないプロパティ名の照合を有効にする

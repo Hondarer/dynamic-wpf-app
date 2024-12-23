@@ -4,6 +4,18 @@ namespace AdornableWpfApp.ViewModels
 {
     public class MainWindowViewModel : BindableBase
     {
-        // ここに基底の処理を記述可能
+        private string _title = "MainWindow";
+
+        public string Title
+        { 
+            get
+            {
+                return _title;
+            }
+            set
+            {
+                SetProperty(ref _title, value);
+            }
+        }
     }
 }
