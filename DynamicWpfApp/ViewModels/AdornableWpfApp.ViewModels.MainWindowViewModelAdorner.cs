@@ -1,5 +1,6 @@
 ﻿#r "System.Text.Json"
 
+using AdornableWpfLib.ViewModels;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;

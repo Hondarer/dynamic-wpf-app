@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace AdornableWpfApp.ViewModels
+namespace AdornableWpfLib.ViewModels
 {
     public class BindableBase : INotifyPropertyChanged
     {
